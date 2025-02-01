@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+
+<!-- Page Header Start -->
+<div class="page-header" style="background: url('img/banner1.jpg');">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="breadcrumb-wrapper">
+                    <h2 class="product-title">Post your Ads</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Page Header End -->
+
+<!-- Start Content -->
+<div id="content" class="section-padding">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-5 col-md-12 col-xs-12">
+                {% if request.user.is_authenticated %}
+                    <!-- Display Messages -->
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <div class="row page-content">
+                        <form method="POST" enctype="multipart/form-data" class="ads-form w-100">
+                            {% csrf_token %}
+                            
+                            {% for field in form %}
+                                <div class="form-group mb-3">
+                                    <label>
+                                        {{ field.label }}
+                                        {% if field.field.required %}
+                                            <span class="req-aseteric">*</span>
+                                        {% endif %}
+                                    </label>
+                                    
+                                    {% if field.help_text %}
+                                        <span class="h-text">({{ field.help_text }})</span>
+                                    {% endif %}
+
+                                    {{ field }}
+
+                                    {% if field.errors %}
+                                        <div class="error-msg">
+                                            {% for error in field.errors %}
+                                                <div class="alert alert-danger">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+
+                            <!-- File Upload Section -->
+                            <div class="form-group mb-3">
+                                <label>Images <span class="req-aseteric">*</span> 
+                                    <span class="h-text">(Max 5 images, 3MB each)</span>
+                                </label>
+                                <input type="file" class="filepond" name="images" multiple>
+                                <div class="error-msg" id="imagesmsg"></div>
+                            </div>
+
+                            <button type="submit" class="btn btn-common mt-3 w-100">Post Ad</button>
+                        </form>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning">
+                        Please <a href="{% url 'login' %}">login</a> to post an ad.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Banners -->
+{% for banner in top_banners %}
+    <div class="top-banner">
+        <img src="{{ banner.image.url }}" alt="{{ banner.title }}">
+        <a href="{{ banner.link }}">{{ banner.title }}</a>
+    </div>
+{% endfor %}
+
+{% for banner in right_banners %}
+    <div class="right-banner">
+        <img src="{{ banner.image.url }}" alt="{{ banner.title }}">
+        <a href="{{ banner.link }}">{{ banner.title }}</a>
+    </div>
+{% endfor %}
+
+{% for banner in bottom_banners %}
+    <div class="bottom-banner">
+        <img src="{{ banner.image.url }}" alt="{{ banner.title }}">
+        <a href="{{ banner.link }}">{{ banner.title }}</a>
+    </div>
+{% endfor %}
+
+<!-- Required Scripts -->
+<script src="https://unpkg.com/filepond-plugin-file-validate-size"></script>
+<script src="https://unpkg.com/filepond-plugin-file-validate-type"></script>
+<script src="https://unpkg.com/filepond"></script>
+<link href="https://unpkg.com/filepond/dist/filepond.css" rel="stylesheet">
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // FilePond initialization
+    FilePond.registerPlugin(FilePondPluginFileValidateSize);
+    FilePond.registerPlugin(FilePondPluginFileValidateType);
+    
+    const inputElement = document.querySelector('input[type="file"]');
+    const pond = FilePond.create(inputElement, {
+        allowMultiple: true,
+        maxFiles: 5,
+        maxFileSize: '3MB',
+        acceptedFileTypes: ['image/png', 'image/jpeg'],
+        server: {
+            process: {
+                url: '{% url "post-ads" %}',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock content %}
