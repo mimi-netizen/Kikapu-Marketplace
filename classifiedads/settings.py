@@ -74,6 +74,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'pages.context_processors.footer_recent_ads',
+                'ads.context_processors.unread_messages',
             ],
         },
     },
@@ -149,9 +150,9 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
 # Location that holds user-uploaded files.
-MEDIA_ROOT = os.path.join(BASE_DIR, 'static/images')
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # URL that handles the media files served from MEDIA_ROOT. 
-MEDIA_URL = '/images/'
+MEDIA_URL = '/media/'
 
 # DJ_DEBUG_TOOLBAR
 INTERNAL_IPS = [
@@ -181,6 +182,6 @@ django_heroku.settings(locals())
 # MAILER_EMAIL_BACKEND = EMAIL_BACKEND
 EMAIL_USE_TLS = True  
 EMAIL_HOST = 'smtp.gmail.com'  
-EMAIL_HOST_USER = 'celynekydd@gmail.com'  
-EMAIL_HOST_PASSWORD = 'bprk elqq yypl yagp'
+EMAIL_HOST_USER = ''  
+EMAIL_HOST_PASSWORD = ''
 EMAIL_PORT = 587

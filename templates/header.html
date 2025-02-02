@@ -101,6 +101,18 @@
               <li class="nav-item">
                 <a class="nav-link" href="{% url 'contact' %}"> Contact </a>
               </li>
+
+              {% if request.user.is_authenticated %}
+              <!-- Messages Link -->
+              <li class="nav-item">
+                <a class="nav-link" href="{% url 'inbox' %}">
+                  <i class="lni-envelope"></i> Messages
+                  {% if unread_messages_count > 0 %}
+                    <span class="badge badge-danger">{{ unread_messages_count }}</span>
+                  {% endif %}
+                </a>
+              </li>
+              {% endif %}
             </ul>
 
             <ul class="sign-in">
@@ -126,15 +138,6 @@
                   <a class="dropdown-item" href="{% url 'logout' %}"
                     ><i class="lni-enter"></i> Logout</a
                   >
-                  <!-- <a class="dropdown-item" href="{% url 'profile-ads' %}"><i class="lni-wallet"></i> My
-                                    Ads</a>
-                                <a class="dropdown-item" href="{% url 'profile-favorite-ads' %}"><i
-                                        class="lni-heart"></i>
-                                    Favourite ads</a>
-
-                                <a class="dropdown-item" href="{% url 'profile-close' %}"><i
-                                        class="lni-close"></i>Account
-                                    close</a> -->
                 </div>
                 {% else %}
                 <a

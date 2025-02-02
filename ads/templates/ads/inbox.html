@@ -1,0 +1,48 @@
+<!-- inbox.html -->
+
+{% extends 'base.html' %}
+
+{% block content %}
+  <div class="container">
+    <h1>Inbox</h1>
+    
+    <p>You have {{ unread_messages_count }} unread messages.</p>
+    
+    <div class="received-messages">
+      <h2>Received Messages</h2>
+      {% if received_messages %}
+        <ul>
+          {% for message in received_messages %}
+            <li>
+              <strong>From:</strong> {{ message.sender }}<br>
+              <strong>Message:</strong> {{ message.content }}<br>
+              <strong>Sent on:</strong> {{ message.created_at|date:"D, d M Y H:i:s" }}<br>
+              {% if not message.is_read %}
+                <span class="badge badge-warning">Unread</span>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>You have no received messages.</p>
+      {% endif %}
+    </div>
+
+    <div class="sent-messages">
+      <h2>Sent Messages</h2>
+      {% if sent_messages %}
+        <ul>
+          {% for message in sent_messages %}
+            <li>
+              <strong>To:</strong> {{ message.receiver }}<br>
+              <strong>Message:</strong> {{ message.content }}<br>
+              <strong>Sent on:</strong> {{ message.created_at|date:"D, d M Y H:i:s" }}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>You have no sent messages.</p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

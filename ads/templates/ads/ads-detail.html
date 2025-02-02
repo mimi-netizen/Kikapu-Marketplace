@@ -34,7 +34,7 @@
           <div id="carousel-example-1z" class="carousel slide carousel-fade" data-ride="carousel">
             <!--Indicators-->
             <ol class="carousel-indicators">
-              {% for p in ads_photos %}
+              {% for p in ads_images %}
               <li data-target="#carousel-example-1z" data-slide-to="{{ forloop.counter0 }}"
                 class="{% if forloop.counter0 == 0 %} active {% endif %}"></li>
               {% endfor %}
@@ -42,7 +42,7 @@
             <!--/.Indicators-->
             <!--Slides-->
             <div class="carousel-inner" role="listbox">
-              {% for p in ads_photos %}
+              {% for p in ads_images %}
               <div class="carousel-item {% if forloop.counter0 == 0 %} active {% endif %}">
                 <img class="d-block w-100" src="{{p.image.url}}" alt="First slide">
               </div>
@@ -62,7 +62,7 @@
             </div>
           </div>
           {% else %}
-                {% for p in ads_photos %}
+                {% for p in ads_images %}
                 {% if forloop.first %}
                     <img class="img-fluid" src="{{ p.image.url }}" alt="">
                 {% endif %}

@@ -1,8 +1,9 @@
 from django import forms
 from ckeditor.widgets import CKEditorWidget
-from .models import Ads, Author, County, City, Category
+from .models import Ads, Author, County, City, Category, CITY_COUNTY_MAPPING
 from django.core.validators import RegexValidator
 from .models import phone_validator
+
 
 class PostAdsForm(forms.ModelForm):
     # Phone number validator for Kenyan format
@@ -66,14 +67,6 @@ class PostAdsForm(forms.ModelForm):
         })
     )
 
-    subcategory = forms.ChoiceField(
-        choices=[],
-        widget=forms.Select(attrs={
-            'class': 'form-control ad-post-form',
-            'placeholder': 'Select Subcategory'
-        }),
-        required=False
-    )
 
     phone_number = forms.CharField(
         widget=forms.TextInput(attrs={
@@ -106,23 +99,6 @@ class PostAdsForm(forms.ModelForm):
         required=False
     )
 
-    class Meta:
-        model = Ads
-        fields = [
-            'title',
-            'description',
-            'category',
-            'subcategory',
-            'price',
-            'condition',
-            'county',
-            'city',
-            'phone_number',
-            'email',
-            'brand',
-            'video_url',
-        ]
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
@@ -133,6 +109,47 @@ class PostAdsForm(forms.ModelForm):
         # Set optional fields
         self.fields['brand'].required = False
         self.fields['video_url'].required = False
-        self.fields['subcategory'].required = False
 
-        
+        # Initialize city queryset as empty
+        self.fields['city'].queryset = City.objects.none()
+
+        # If county is selected, filter cities
+        if 'county' in self.data:
+            try:
+                county_id = int(self.data.get('county'))
+                self.fields['city'].queryset = City.objects.filter(county_id=county_id)
+            except (ValueError, TypeError):
+                pass
+        elif self.instance.pk:
+            self.fields['city'].queryset = City.objects.filter(county=self.instance.county)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        city = cleaned_data.get('city')
+        county = cleaned_data.get('county')
+
+        if city and county:
+            if city.county != county:
+                raise forms.ValidationError({
+                    'city': 'Selected city does not belong to the selected county.'
+                })
+
+        return cleaned_data
+
+    class Meta:
+        model = Ads
+        fields = [
+            'title',
+            'description',
+            'category',
+            'price',
+            'condition',
+            'county',
+            'city',
+            'phone_number',
+            'email',
+            'brand',
+            'video_url',
+        ]
+
+   

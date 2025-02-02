@@ -3,6 +3,7 @@ from ckeditor.fields import RichTextField
 from django.utils.text import slugify
 from django.contrib.auth.models import User
 from django.core.validators import RegexValidator
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 import uuid
@@ -25,6 +26,21 @@ class Author(models.Model):
 
     def __str__(self):
         return self.user.username
+    
+# message model
+class Message(models.Model):
+    sender = models.ForeignKey(User, related_name='sent_messages', on_delete=models.CASCADE)
+    receiver = models.ForeignKey(User, related_name='received_messages', on_delete=models.CASCADE)
+    ad = models.ForeignKey('Ads', on_delete=models.CASCADE)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'Message from {self.sender} to {self.receiver}'
 
 # County Model
 class County(models.Model):
@@ -102,6 +118,82 @@ class County(models.Model):
     def __str__(self):
         return self.county_name
 
+
+# City-County Mapping
+CITY_COUNTY_MAPPING = {
+    # Coast Region
+    'Voi': 'Taita-Taveta', 'Mwatate': 'Taita-Taveta', 'Taveta': 'Taita-Taveta', 'Wundanyi': 'Taita-Taveta',
+    'Mombasa': 'Mombasa', 'Nyali': 'Mombasa', 'Likoni': 'Mombasa', 'Changamwe': 'Mombasa', 'Kisauni': 'Mombasa', 'Mtwapa': 'Kilifi',
+    'Kwale': 'Kwale', 'Ukunda': 'Kwale', 'Msambweni': 'Kwale', 'Lunga Lunga': 'Kwale', 'Kinango': 'Kwale',
+    'Kilifi': 'Kilifi', 'Malindi': 'Kilifi', 'Watamu': 'Kilifi', 'Kaloleni': 'Kilifi', 'Rabai': 'Kilifi',
+    'Tana River': 'Tana River', 'Hola': 'Tana River', 'Garsen': 'Tana River', 'Bura': 'Tana River',
+    'Lamu': 'Lamu', 'Mokowe': 'Lamu', 'Shela': 'Lamu', 'Faza': 'Lamu', 'Mpeketoni': 'Lamu', 'Witu': 'Lamu',
+    
+    # Nairobi Region
+    'Nairobi': 'Nairobi', 'Karen': 'Nairobi', "Lang'ata": 'Nairobi', 'Westlands': 'Nairobi',
+    'Embakasi': 'Nairobi', 'Kasarani': 'Nairobi', 'Gikambura': 'Nairobi', 'Kilimani': 'Nairobi', 
+    'Donholm': 'Nairobi', 'Jogoo Road': 'Nairobi', 'Eastleigh': 'Nairobi', 'Buru Buru': 'Nairobi',
+    'Pangani': 'Nairobi', 'Hurlingham': 'Nairobi', 'Parklands': 'Nairobi', 'Ziwani': 'Nairobi',
+    'Kawangware': 'Nairobi', 'Kabete': 'Nairobi', 'South B': 'Nairobi', 'South C': 'Nairobi',
+    'Kariobangi': 'Nairobi', 'Starehe': 'Nairobi',
+
+    
+    # Nyanza Region
+    'Kisumu': 'Kisumu', 'Ahero': 'Kisumu', 'Muhoroni': 'Kisumu',
+    'Homa Bay': 'Homa Bay', 'Kendu Bay': 'Homa Bay', 'Mbita': 'Homa Bay', 'Oyugis': 'Homa Bay',
+    'Migori': 'Migori', 'Rongo': 'Migori', 'Awendo': 'Migori', 'Uriri': 'Migori',
+    'Siaya': 'Siaya', 'Bondo': 'Siaya', 'Ugunja': 'Siaya', 'Yala': 'Siaya',
+    'Kisii': 'Kisii', 'Ogembo': 'Kisii', 'Nyamache': 'Kisii', 'Suneka': 'Kisii',
+    'Nyamira': 'Nyamira', 'Keroka': 'Nyamira', 'Nyansiongo': 'Nyamira', 'Ekerenyo': 'Nyamira',
+
+    # Rift Valley Region
+    'Nakuru': 'Nakuru', 'Naivasha': 'Nakuru', 'Gilgil': 'Nakuru', 'Molo': 'Nakuru', 'Njoro': 'Nakuru',
+    'Uasin Gishu': 'Uasin Gishu', 'Kesses': 'Uasin Gishu', 'Moiben': 'Uasin Gishu', 'Burnt Forest': 'Uasin Gishu', 'Ziwa': 'Uasin Gishu',
+    'Turkana': 'Turkana', 'Kakuma': 'Turkana', 'Lokichogio': 'Turkana', 'Kalokol': 'Turkana', 'Lokichar': 'Turkana',
+    'West Pokot': 'West Pokot', 'Kacheliba': 'West Pokot', 'Alale': 'West Pokot', 'Sigor': 'West Pokot', 'Lomut': 'West Pokot',
+    'Baringo': 'Baringo', 'Marigat': 'Baringo', 'Kabarnet': 'Baringo', 'Mogotio': 'Baringo', 'Eldama Ravine': 'Baringo',
+    'Bomet': 'Bomet', 'Longisa': 'Bomet', 'Sotik': 'Bomet', 'Chepalungu': 'Bomet',
+    'Kericho': 'Kericho', 'Litein': 'Kericho', 'Bureti': 'Kericho', 'Sosiot': 'Kericho',
+    'Samburu': 'Samburu', 'Baragoi': 'Samburu', "Archer's Post": 'Samburu', 'Wamba': 'Samburu',
+    'Trans-Nzoia': 'Trans-Nzoia', 'Kitale': 'Trans-Nzoia', 'Endebess': 'Trans-Nzoia', 'Kwanza': 'Trans-Nzoia',
+    'Elgeyo-Marakwet': 'Elgeyo-Marakwet', 'Iten': 'Elgeyo-Marakwet', 'Kapsowar': 'Elgeyo-Marakwet', 'Chepkorio': 'Elgeyo-Marakwet',
+    'Nandi': 'Nandi', 'Kapsabet': 'Nandi', 'Nandi Hills': 'Nandi', 'Mosoriot': 'Nandi',
+    'Narok': 'Narok', 'Kilgoris': 'Narok', 'Emurua Dikirr': 'Narok', 'Ololulung\'a': 'Narok',
+
+    # Western Region
+    'Kakamega': 'Kakamega', 'Mumias': 'Kakamega', 'Malava': 'Kakamega', 'Butere': 'Kakamega', 'Khayega': 'Kakamega',
+    'Bungoma': 'Bungoma', 'Webuye': 'Bungoma', 'Malakisi': 'Bungoma', 'Chwele': 'Bungoma', 'Naitiri': 'Bungoma',
+    'Busia': 'Busia', 'Malaba': 'Busia', 'Nambale': 'Busia', 'Funyula': 'Busia',
+    'Vihiga': 'Vihiga', 'Mbale': 'Vihiga', 'Luanda': 'Vihiga', 'Majengo': 'Vihiga',
+
+    # Eastern Region
+    'Embu': 'Embu', 'Runyenjes': 'Embu', 'Siakago': 'Embu', 'Manyatta': 'Embu',
+    'Kitui': 'Kitui', 'Mwingi': 'Kitui', 'Mutomo': 'Kitui', 'Kwa Vonza': 'Kitui',
+    'Machakos': 'Machakos', 'Athi River': 'Machakos', 'Mwala': 'Machakos', 'Kathiani': 'Machakos',
+    'Makueni': 'Makueni', 'Makindu': 'Makueni', 'Sultan Hamud': 'Makueni', 'Kibwezi': 'Makueni',
+    'Meru': 'Meru', 'Maua': 'Meru', 'Nkubu': 'Meru', 'Timau': 'Meru',
+    'Tharaka-Nithi': 'Tharaka-Nithi', 'Marimanti': 'Tharaka-Nithi', 'Gatunga': 'Tharaka-Nithi', 'Magutuni': 'Tharaka-Nithi',
+
+    # North Eastern Region
+    'Garissa': 'Garissa', 'Dadaab': 'Garissa', 'Fafi': 'Garissa', 'Liboi': 'Garissa',
+    'Isiolo': 'Isiolo', 'Garba Tulla': 'Isiolo', 'Merti': 'Isiolo', 'Kinna': 'Isiolo',
+    'Mandera': 'Mandera', 'El Wak': 'Mandera', 'Takaba': 'Mandera', 'Rhamu': 'Mandera',
+    'Marsabit': 'Marsabit', 'Laisamis': 'Marsabit', 'Loiyangalani': 'Marsabit', 'Maikona': 'Marsabit',
+    'Wajir': 'Wajir', 'Habaswein': 'Wajir', 'Tarbaj': 'Wajir', 'Griftu': 'Wajir',
+
+    # Central Region
+    'Kiambu': 'Kiambu', 'Thika': 'Kiambu', 'Ruiru': 'Kiambu', 'Kikuyu': 'Kiambu',
+    "Murang'a": "Murang'a", 'Kenol': "Murang'a", 'Maragua': "Murang'a", 'Kangema': "Murang'a",
+    'Kirinyaga': 'Kirinyaga', 'Kerugoya': 'Kirinyaga', 'Sagana': 'Kirinyaga', 'Wanguru': 'Kirinyaga', 'Baricho': 'Kirinyaga',
+    'Nyandarua': 'Nyandarua', 'Ol Kalou': 'Nyandarua', 'Ndaragwa': 'Nyandarua', 'Njabini': 'Nyandarua', 'Engineer': 'Nyandarua',
+    'Nyeri': 'Nyeri', 'Karatina': 'Nyeri', 'Othaya': 'Nyeri', 'Mweiga': 'Nyeri',
+    'Laikipia': 'Laikipia', 'Nanyuki': 'Laikipia', 'Rumuruti': 'Laikipia', 'Nyahururu': 'Laikipia', 'Dol Dol': 'Laikipia',
+
+    # Kajiado County
+    'Kajiado': 'Kajiado', 'Kitengela': 'Kajiado', 'Ngong': 'Kajiado', 'Kajiado Town': 'Kajiado', 'Isinya': 'Kajiado',
+}
+
+
 # City Model
 class City(models.Model):
     CITY_CHOICES = [
@@ -167,17 +259,30 @@ class City(models.Model):
         ('Dol Dol', 'Dol Dol'),
     ]
 
-
     city_name = models.CharField(max_length=100, choices=CITY_CHOICES)
     slug = models.SlugField(blank=True, null=True)
-    county = models.ForeignKey(
-        'County', 
-        on_delete=models.CASCADE,
-        null=True,  
-        blank=True  
-    )
+    county = models.ForeignKey(County, on_delete=models.CASCADE)
+
+    def clean(self):
+        if self.city_name and self.county:
+            expected_county = CITY_COUNTY_MAPPING.get(self.city_name)
+            if expected_county and expected_county != self.county.county_name:
+                raise ValidationError({
+                    'county': f'This city belongs to {expected_county} county, not {self.county.county_name}'
+                })
 
     def save(self, *args, **kwargs):
+        # First validate
+        self.clean()
+        
+        # Auto-assign county if not set
+        if not self.county:
+            county_name = CITY_COUNTY_MAPPING.get(self.city_name)
+            if county_name:
+                county, _ = County.objects.get_or_create(county_name=county_name)
+                self.county = county
+        
+        # Generate slug
         if not self.slug:
             base_slug = slugify(self.city_name)
             unique_slug = base_slug
@@ -186,130 +291,87 @@ class City(models.Model):
                 unique_slug = f"{base_slug}-{counter}"
                 counter += 1
             self.slug = unique_slug
+            
         super().save(*args, **kwargs)
 
     class Meta:
         verbose_name_plural = "Cities"
         unique_together = ('city_name', 'county')
+        ordering = ['city_name']
 
     def __str__(self):
-        return f"{self.city_name} ({self.county.county_name if self.county else 'No County'})"
+        return f"{self.city_name} ({self.county.county_name})"
+    
 
-# Category Model
+# category model
 class Category(models.Model):
-    MAIN_CATEGORY_CHOICES = [
-        ('Vehicles', 'Vehicles'),
-        ('Property', 'Property'),
-        ('Electronics', 'Electronics'),
-        ('Fashion', 'Fashion'),
-        ('Home & Office', 'Home & Office'),
-        ('Jobs & Services', 'Jobs & Services'),
-        ('Agriculture', 'Agriculture'),
-        ('Sports & Outdoors', 'Sports & Outdoors'),
-        ('Food & Beverages', 'Food & Beverages'),
-        ('Health & Beauty', 'Health & Beauty'),
+    CATEGORY_CHOICES = [
+        ('Cars', 'Cars'),
+        ('Buses & Microbuses', 'Buses & Microbuses'),
+        ('Heavy Equipment', 'Heavy Equipment'),
+        ('Motorcycles', 'Motorcycles'),
+        ('Trucks', 'Trucks'),
+        ('Other Vehicles', 'Other Vehicles'),
+        ('New Builds', 'New Builds'),
+        ('Houses & Apartments for Rent', 'Houses & Apartments for Rent'),
+        ('Houses & Apartments for Sale', 'Houses & Apartments for Sale'),
+        ('Land for Sale', 'Land for Sale'),
+        ('Commercial Property', 'Commercial Property'),
+        ('Other Property', 'Other Property'),
+        ('Phones', 'Phones'),
+        ('Laptops', 'Laptops'),
+        ('Desktops', 'Desktops'),
+        ('Tablets', 'Tablets'),
+        ('Televisions', 'Televisions'),
+        ('Other Electronics', 'Other Electronics'),
+        ('Men\'s Fashion', 'Men\'s Fashion'),
+        ('Women\'s Fashion', 'Women\'s Fashion'),
+        ('Kids\' Fashion', 'Kids\' Fashion'),
+        ('Other Fashion', 'Other Fashion'),
+        ('Furniture', 'Furniture'),
+        ('Appliances', 'Appliances'),
+        ('Home Decor', 'Home Decor'),
+        ('Office Equipment', 'Office Equipment'),
+        ('Other Home & Office', 'Other Home & Office'),
+        ('Jobs', 'Jobs'),
+        ('Services', 'Services'),
+        ('Livestock', 'Livestock'),
+        ('Farming Equipment', 'Farming Equipment'),
+        ('Other Agriculture', 'Other Agriculture'),
+        ('Fitness', 'Fitness'),
+        ('Sports Equipment', 'Sports Equipment'),
+        ('Other Sports & Outdoors', 'Other Sports & Outdoors'),
+        ('Food', 'Food'),
+        ('Beverages', 'Beverages'),
+        ('Health', 'Health'),
+        ('Beauty', 'Beauty'),
         ('Other', 'Other'),
     ]
 
-    SUBCATEGORY_CHOICES = {
-        'Vehicles': [
-            ('Cars', 'Cars'),
-            ('Buses & Microbuses', 'Buses & Microbuses'),
-            ('Heavy Equipment', 'Heavy Equipment'),
-            ('Motorcycles', 'Motorcycles'),
-            ('Trucks', 'Trucks'),
-            ('Other Vehicles', 'Other Vehicles'),
-        ],
-        'Property': [
-            ('New Builds', 'New Builds'),
-            ('Houses & Apartments for Rent', 'Houses & Apartments for Rent'),
-            ('Land for Sale', 'Land for Sale'),
-            ('Commercial Property', 'Commercial Property'),
-            ('Other Property', 'Other Property'),
-        ],
-        'Electronics': [
-            ('Phones', 'Phones'),
-            ('Laptops', 'Laptops'),
-            ('Desktops', 'Desktops'),
-            ('Tablets', 'Tablets'),
-            ('Televisions', 'Televisions'),
-            ('Other Electronics', 'Other Electronics'),
-        ],
-        'Fashion': [
-            ('Men\'s Fashion', 'Men\'s Fashion'),
-            ('Women\'s Fashion', 'Women\'s Fashion'),
-            ('Kids\' Fashion', 'Kids\' Fashion'),
-            ('Other Fashion', 'Other Fashion'),
-        ],
-        'Home & Office': [
-            ('Furniture', 'Furniture'),
-            ('Appliances', 'Appliances'),
-            ('Home Decor', 'Home Decor'),
-            ('Office Equipment', 'Office Equipment'),
-            ('Other Home & Office', 'Other Home & Office'),
-        ],
-        'Jobs & Services': [
-            ('Jobs', 'Jobs'),
-            ('Services', 'Services'),
-        ],
-        'Agriculture': [
-            ('Livestock', 'Livestock'),
-            ('Farming Equipment', 'Farming Equipment'),
-            ('Other Agriculture', 'Other Agriculture'),
-        ],
-        'Sports & Outdoors': [
-            ('Fitness', 'Fitness'),
-            ('Sports Equipment', 'Sports Equipment'),
-            ('Other Sports & Outdoors', 'Other Sports & Outdoors'),
-        ],
-        'Food & Beverages': [
-            ('Food', 'Food'),
-            ('Beverages', 'Beverages'),
-        ],
-        'Health & Beauty': [
-            ('Health', 'Health'),
-            ('Beauty', 'Beauty'),
-        ],
-        'Other': [
-            ('Other', 'Other'),
-        ]
-    }
-
-    main_category = models.CharField(
+    category = models.CharField(
         max_length=50, 
-        choices=MAIN_CATEGORY_CHOICES, 
+        choices=CATEGORY_CHOICES, 
         default='Other'
     )
-    subcategory = models.CharField(
-        max_length=50, 
-        blank=True, 
-        null=True
-    )
+    
     slug = models.SlugField(unique=True, blank=True, null=True)
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            base_slug = slugify(f"{self.main_category} {self.subcategory}" if self.subcategory else self.main_category)
+            base_slug = slugify(self.category)
             unique_slug = base_slug
             counter = 1
             while Category.objects.filter(slug=unique_slug).exists():
                 unique_slug = f"{base_slug}-{counter}"
                 counter += 1
             self.slug = unique_slug
-
-        if self.subcategory:
-            valid_subcategories = self.SUBCATEGORY_CHOICES.get(self.main_category, [])
-            if not any(self.subcategory in subcat for subcat in valid_subcategories):
-                raise ValueError(f"{self.subcategory} is not a valid subcategory for {self.main_category}")
-
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.main_category} - {self.subcategory}" if self.subcategory else self.main_category
+        return self.category
 
     class Meta:
         verbose_name_plural = "Categories"
-        unique_together = ('main_category', 'subcategory')
 
 # Ads Model
 class Ads(models.Model):

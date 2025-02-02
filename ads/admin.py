@@ -30,9 +30,9 @@ class AdsAdmin(admin.ModelAdmin):
     
     list_display_links = ('ad_id', 'title')
     list_editable = ['is_featured']
-    search_fields = ('title', 'price', 'county__county_name', 'city__city_name', 'category__main_category')
+    search_fields = ('title', 'price', 'county__county_name', 'city__city_name', 'category')
     search_help_text = 'Search by title, price, county, city, or category'
-    list_filter = ('price', 'date_created', 'county', 'city', 'is_featured', 'category__main_category')
+    list_filter = ('price', 'date_created', 'county', 'city', 'is_featured', 'category')
     list_per_page = 20
 
     inlines = [AdsImagesInline]
@@ -68,10 +68,10 @@ class CityAdmin(admin.ModelAdmin):
     list_per_page = 20
 
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ('main_category', 'subcategory', 'slug')
-    list_filter = ('main_category',)
-    prepopulated_fields = {'slug': ('main_category', 'subcategory')}
-    search_fields = ('main_category', 'subcategory', 'slug')
+    list_display = ('category', 'slug')
+    list_filter = ('category',)
+    prepopulated_fields = {'slug': ('category',)}
+    search_fields = ('category', 'slug')
     search_help_text = 'Search by category name or slug'
     list_per_page = 20
 

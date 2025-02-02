@@ -1,5 +1,6 @@
 from django.shortcuts import render, get_object_or_404
 from ads.models import Ads, County, City, Category, AdsImages, AdsTopBanner, AdsRightBanner, AdsBottomBanner
+from django.http import JsonResponse
 
 def home(request):
     # Fetch recent ads 
@@ -22,7 +23,7 @@ def home(request):
     # Fetch search location & category 
     # Use county_name instead of name
     county_search = County.objects.values_list('county_name', flat=True).distinct().order_by("county_name")
-    category_search = Category.objects.values_list('main_category', flat=True).distinct().order_by("main_category")
+    category_search = Category.objects.values_list('category', flat=True).distinct().order_by("category")
     
     # Contexts
     context = {
@@ -38,6 +39,7 @@ def home(request):
     }
 
     return render(request, 'pages/index.html', context)
+
 
 # Faq view
 def faq(request):

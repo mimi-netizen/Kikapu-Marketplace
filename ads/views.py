@@ -1,12 +1,14 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.mail import send_mail
 from django.conf import settings
 from django.http import HttpResponse
+from django.http import JsonResponse
 from ads.forms import PostAdsForm
-from ads.models import Ads, AdsImages, County, City, Category, AdsTopBanner, AdsRightBanner, AdsBottomBanner
+from ads.models import Ads, Author, AdsImages, County, City, Category, AdsTopBanner, AdsRightBanner, AdsBottomBanner
 from datetime import datetime, timedelta
+from .models import Message
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.utils.text import slugify
@@ -159,6 +161,33 @@ def post_ads(request):
         }
 
         return render(request, 'ads/post-ads.html', context)
+    
+
+# message views
+@login_required
+def send_message(request, ad_id):
+    if request.method == 'POST':
+        content = request.POST.get('message')
+        ad = Ads.objects.get(id=ad_id)
+        
+        Message.objects.create(
+            sender=request.user,
+            receiver=ad.author.user,
+            ad=ad,
+            content=content
+        )
+        return redirect('ads-detail', ad_id)
+
+@login_required
+def inbox(request):
+    received_messages = Message.objects.filter(receiver=request.user)
+    sent_messages = Message.objects.filter(sender=request.user)
+    
+    context = {
+        'received_messages': received_messages,
+        'sent_messages': sent_messages,
+    }
+    return render(request, 'ads/inbox.html', context)
 
 def ads_search(request):
     county_slug = request.GET.get('county_slug')
@@ -196,16 +225,16 @@ def ads_search(request):
     return render(request, 'ads/ads-search.html', context)
 
 def ads_detail(request, pk):
-    ads = Ads.objects.get(pk=pk)
-    images = AdsImages.objects.filter(ad=ads)
+    ads_detail = Ads.objects.get(pk=pk)
+    ads_images = AdsImages.objects.filter(ad=ads_detail)
     active_time = datetime.now() - timedelta(days=30)
     top_banners = AdsTopBanner.objects.filter(created_at__gte=active_time)
     right_banners = AdsRightBanner.objects.filter(created_at__gte=active_time)
     bottom_banners = AdsBottomBanner.objects.filter(created_at__gte=active_time)
 
     context = {
-        'ads': ads,
-        'images': images,
+        'ads_detail': ads_detail,
+        'ads_images': ads_images,
         'top_banners': top_banners,
         'right_banners': right_banners,
         'bottom_banners': bottom_banners,
@@ -266,6 +295,10 @@ def ads_by_city(request, city_slug):
     }
 
     return render(request, 'ads/ads-by-city.html', context)
+
+def get_cities(request, county_id):
+    cities = City.objects.filter(county_id=county_id).values('id', 'city_name')
+    return JsonResponse({'cities': list(cities)})
 
 def ads_author_archive(request, pk):
     author = get_object_or_404(Author, pk=pk)

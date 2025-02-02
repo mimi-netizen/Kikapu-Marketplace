@@ -132,5 +132,29 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+document.addEventListener('DOMContentLoaded', function() {
+    const countySelect = document.getElementById('id_county');
+    const citySelect = document.getElementById('id_city');
+
+    countySelect.addEventListener('change', function() {
+        const countyId = this.value;
+        citySelect.innerHTML = '<option value="">Loading cities...</option>';
+
+        fetch(`/get-cities/${countyId}/`)  // Create this URL endpoint
+            .then(response => response.json())
+            .then(data => {
+                citySelect.innerHTML = '<option value="">Select City</option>';
+                data.cities.forEach(city => {
+                    const option = document.createElement('option');
+                    option.value = city.id;
+                    option.textContent = city.name;
+                    citySelect.appendChild(option);
+                });
+            });
+    });
+});
 </script>
+
+
 {% endblock content %}
