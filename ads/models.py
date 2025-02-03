@@ -28,10 +28,11 @@ class Author(models.Model):
         return self.user.username
     
 # message model
+
 class Message(models.Model):
     sender = models.ForeignKey(User, related_name='sent_messages', on_delete=models.CASCADE)
     receiver = models.ForeignKey(User, related_name='received_messages', on_delete=models.CASCADE)
-    ad = models.ForeignKey('Ads', on_delete=models.CASCADE)
+    ad = models.ForeignKey('Ads', on_delete=models.CASCADE)  # Changed from 'Ad' to 'Ads'
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
@@ -40,7 +41,7 @@ class Message(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f'Message from {self.sender} to {self.receiver}'
+        return f"Message from {self.sender} to {self.receiver} about {self.ad}"
 
 # County Model
 class County(models.Model):

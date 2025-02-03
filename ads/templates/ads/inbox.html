@@ -1,48 +1,215 @@
-<!-- inbox.html -->
-
 {% extends 'base.html' %}
 
 {% block content %}
-  <div class="container">
-    <h1>Inbox</h1>
+<div class="container py-4">
+    <h1 class="mb-4">Inbox</h1>
     
-    <p>You have {{ unread_messages_count }} unread messages.</p>
+    {% if unread_messages_count > 0 %}
+        <p class="alert alert-info">
+            You have {{ unread_messages_count }} unread message{{ unread_messages_count|pluralize }}
+        </p>
+    {% endif %}
     
-    <div class="received-messages">
-      <h2>Received Messages</h2>
-      {% if received_messages %}
-        <ul>
-          {% for message in received_messages %}
-            <li>
-              <strong>From:</strong> {{ message.sender }}<br>
-              <strong>Message:</strong> {{ message.content }}<br>
-              <strong>Sent on:</strong> {{ message.created_at|date:"D, d M Y H:i:s" }}<br>
-              {% if not message.is_read %}
-                <span class="badge badge-warning">Unread</span>
-              {% endif %}
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p>You have no received messages.</p>
-      {% endif %}
-    </div>
+    <div class="row">
+        <!-- Received Messages -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="h5 mb-0">Received Messages</h2>
+                </div>
+                <div class="card-body">
+                    {% if received_messages %}
+                        {% for message in received_messages %}
+                            <div class="message-box card mb-3 {% if not message.is_read %}border-primary{% endif %}" id="message-{{ message.id }}">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <strong>From:</strong> {{ message.sender.username }}
+                                            <br>
+                                            <small class="text-muted">
+                                                <strong>Ad:</strong> 
+                                                <a href="{% url 'ads-detail' message.ad.id %}">
+                                                    {{ message.ad.title }}
+                                                </a>
+                                            </small>
+                                        </div>
+                                        <div class="d-flex align-items-start">
+                                            <small class="text-muted me-2">
+                                                {{ message.created_at|date:"M d, Y H:i" }}
+                                            </small>
+                                            <button class="btn btn-danger btn-sm delete-message" 
+                                                    data-message-id="{{ message.id }}">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <p class="card-text">{{ message.content }}</p>
+                                    {% if not message.is_read %}
+                                        <span class="badge bg-primary">New</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted" id="no-received-messages" style="display: none;">No messages received yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
 
-    <div class="sent-messages">
-      <h2>Sent Messages</h2>
-      {% if sent_messages %}
-        <ul>
-          {% for message in sent_messages %}
-            <li>
-              <strong>To:</strong> {{ message.receiver }}<br>
-              <strong>Message:</strong> {{ message.content }}<br>
-              <strong>Sent on:</strong> {{ message.created_at|date:"D, d M Y H:i:s" }}
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p>You have no sent messages.</p>
-      {% endif %}
+        <!-- Sent Messages -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="h5 mb-0">Sent Messages</h2>
+                </div>
+                <div class="card-body">
+                    {% if sent_messages %}
+                        {% for message in sent_messages %}
+                            <div class="message-box card mb-3" id="message-{{ message.id }}">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <strong>To:</strong> {{ message.receiver.username }}
+                                            <br>
+                                            <small class="text-muted">
+                                                <strong>Ad:</strong> 
+                                                <a href="{% url 'ads-detail' message.ad.id %}">
+                                                    {{ message.ad.title }}
+                                                </a>
+                                            </small>
+                                        </div>
+                                        <div class="d-flex align-items-start">
+                                            <small class="text-muted me-2">
+                                                {{ message.created_at|date:"M d, Y H:i" }}
+                                            </small>
+                                            <button class="btn btn-danger btn-sm delete-message" 
+                                                    data-message-id="{{ message.id }}">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <p class="card-text">{{ message.content }}</p>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted" id="no-sent-messages" style="display: none;">No sent messages yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
+</div>
+
+<style>
+.message-box {
+    transition: all 0.3s ease;
+}
+
+.message-box:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.delete-message {
+    opacity: 0.8;
+    transition: all 0.3s ease;
+}
+
+.delete-message:hover {
+    opacity: 1;
+}
+
+.message-box.fade-out {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Send message form handler
+    const sendMessageForm = document.querySelector('.send-message-form');
+    if (sendMessageForm) {
+        sendMessageForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            fetch(this.action, {
+                method: 'POST',
+                body: new FormData(this),
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.login_required) {
+                    window.location.href = '{% url "login" %}';
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    }
+
+    // Message deletion handler
+    const deleteButtons = document.querySelectorAll('.delete-message');
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const messageId = this.dataset.messageId;
+            if (confirm('Are you sure you want to delete this message?')) {
+                fetch(`/delete-message/${messageId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Content-Type': 'application/json'
+                    },
+                })
+                .then(response => {
+                    if (response.ok) {
+                        const messageElement = document.getElementById(`message-${messageId}`);
+                        messageElement.classList.add('fade-out');
+                        setTimeout(() => {
+                            messageElement.remove();
+                            
+                            // Check received messages
+                            const receivedMessages = document.querySelector('.card-body').querySelectorAll('.message-box');
+                            if (receivedMessages.length === 0) {
+                                document.getElementById('no-received-messages').style.display = 'block';
+                            }
+                            
+                            // Check sent messages
+                            const sentMessages = document.querySelectorAll('.card-body')[1].querySelectorAll('.message-box');
+                            if (sentMessages.length === 0) {
+                                document.getElementById('no-sent-messages').style.display = 'block';
+                            }
+                        }, 300);
+                    } else {
+                        alert('Error deleting message');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error deleting message');
+                });
+            }
+        });
+    });
+
+    // Helper function to get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+});
+</script>
 {% endblock %}

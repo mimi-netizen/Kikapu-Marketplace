@@ -12,6 +12,7 @@ from .models import Message
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.utils.text import slugify
+from django.views.decorators.http import require_POST
 import unicodedata
 import logging
 from django.db import transaction
@@ -164,11 +165,19 @@ def post_ads(request):
     
 
 # message views
-@login_required
 def send_message(request, ad_id):
+    if not request.user.is_authenticated:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'error': 'Please log in to send messages',
+                'login_required': True
+            }, status=403)
+        messages.info(request, 'Please log in to send messages')
+        return redirect('login')
+
     if request.method == 'POST':
+        ad = get_object_or_404(Ads, id=ad_id)
         content = request.POST.get('message')
-        ad = Ads.objects.get(id=ad_id)
         
         Message.objects.create(
             sender=request.user,
@@ -176,18 +185,46 @@ def send_message(request, ad_id):
             ad=ad,
             content=content
         )
+        
+        messages.success(request, 'Message sent successfully!')
         return redirect('ads-detail', ad_id)
+    return redirect('ads-detail', ad_id)
 
 @login_required
 def inbox(request):
-    received_messages = Message.objects.filter(receiver=request.user)
+    received_messages = Message.objects.filter(
+        receiver=request.user
+    ).select_related('sender', 'ad').order_by('-created_at')
     sent_messages = Message.objects.filter(sender=request.user)
+    
+    unread_messages_count = received_messages.filter(is_read=False).count()
     
     context = {
         'received_messages': received_messages,
         'sent_messages': sent_messages,
+        'unread_messages_count': unread_messages_count,
     }
     return render(request, 'ads/inbox.html', context)
+
+@login_required
+def message_detail(request, message_id):
+    message = get_object_or_404(Message, id=message_id, receiver=request.user)
+    if not message.is_read:
+        message.is_read = True
+        message.save()
+    return render(request, 'ads/message_detail.html', {'message': message})
+
+@login_required
+@require_POST
+def delete_message(request, message_id):
+    message = get_object_or_404(Message, id=message_id)
+    # Check if the user has permission to delete the message
+    if request.user == message.sender or request.user == message.receiver:
+        message.delete()
+        return JsonResponse({'status': 'success'})
+    return JsonResponse({'status': 'error'}, status=403)
+
+
 
 def ads_search(request):
     county_slug = request.GET.get('county_slug')
@@ -231,6 +268,14 @@ def ads_detail(request, pk):
     top_banners = AdsTopBanner.objects.filter(created_at__gte=active_time)
     right_banners = AdsRightBanner.objects.filter(created_at__gte=active_time)
     bottom_banners = AdsBottomBanner.objects.filter(created_at__gte=active_time)
+
+    # Verify image existence
+    for image in ads_images:
+        if image.image:
+            try:
+                image.image.file  # This will check if file exists
+            except:
+                image.image = None  # Clear invalid image reference
 
     context = {
         'ads_detail': ads_detail,

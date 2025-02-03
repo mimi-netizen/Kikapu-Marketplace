@@ -13,6 +13,7 @@ urlpatterns = [
     path('author/<int:pk>/', views.ads_author_archive, name='author-archive'),
     path('ads-search/', views.ads_search, name='ads-search'),
     path('get-cities/<int:county_id>/', views.get_cities, name='get_cities'),
-    path('message/<int:ad_id>/', views.send_message, name='send-message'),
+    path('send-message/<int:ad_id>/', views.send_message, name='send-message'),
     path('inbox/', views.inbox, name='inbox'),
+    path('delete-message/<int:message_id>/', views.delete_message, name='delete-message'),
 ]

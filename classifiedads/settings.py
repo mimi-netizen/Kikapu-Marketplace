@@ -26,6 +26,11 @@ SECRET_KEY = '+$#4m3n(oz_n#ip-3bpl5g5ew7)v$gq66rwhgz(dune&0(2!)g'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+# Added these headers for development
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ALLOW_CREDENTIALS = True
+
 ALLOWED_HOSTS = ['huntingads.herokuapp.com']
 
 
@@ -58,6 +63,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # ... other middleware ...
+    'django.middleware.security.SecurityMiddleware',
+    'django.middleware.common.CommonMiddleware',
 ]
 
 ROOT_URLCONF = 'classifiedads.urls'
@@ -131,7 +139,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'GMT'
 
 USE_I18N = True
 
@@ -153,6 +161,16 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # URL that handles the media files served from MEDIA_ROOT. 
 MEDIA_URL = '/media/'
+
+# Added these headers for development
+if DEBUG:
+    MIDDLEWARE.append('django.middleware.common.CommonMiddleware')
+    CORS_ALLOW_ALL_ORIGINS = True
+
+# Added security headers
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+
 
 # DJ_DEBUG_TOOLBAR
 INTERNAL_IPS = [

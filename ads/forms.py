@@ -109,6 +109,7 @@ class PostAdsForm(forms.ModelForm):
         # Set optional fields
         self.fields['brand'].required = False
         self.fields['video_url'].required = False
+        self.fields['city'].required = False
 
         # Initialize city queryset as empty
         self.fields['city'].queryset = City.objects.none()
