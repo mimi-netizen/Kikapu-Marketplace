@@ -10,7 +10,7 @@ from ads.models import Ads, Author, AdsImages, County, City, Category, AdsTopBan
 from datetime import datetime, timedelta
 from .models import Conversation, Message
 from django.shortcuts import get_object_or_404
-from django.db.models import Q
+from django.db.models import Max, Count, Q
 from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 import unicodedata
@@ -45,127 +45,63 @@ logger = logging.getLogger(__name__)
 @login_required(login_url='login')
 def post_ads(request):
     if request.method == 'POST':
-        form = PostAdsForm(request.POST, request.FILES)
+        form = PostAdsForm(request.POST, request.FILES, user=request.user)
         
         if form.is_valid():
             try:
-                # Start a database transaction to ensure atomic operations
                 with transaction.atomic():
-                    # Save the ad with the current user's author
-                    ads = form.save(commit=False)
-                    ads.author = request.user.author
+                    # Save the ad
+                    ads = form.save()
 
-                    # Process location and category
-                    county_name = request.POST.get('county', '').strip()
-                    city_name = request.POST.get('city', '').strip()
-                    category_name = request.POST.get('category', '').strip()
-
-                    # Normalize and create slugs
-                    def normalize_slug(name):
-                        return slugify(
-                            unicodedata.normalize('NFKD', name)
-                            .encode('ascii', 'ignore')
-                            .decode('ascii')
+                    # Handle multiple images
+                    images = request.FILES.getlist('images')
+                    for image in images:
+                        AdsImages.objects.create(
+                            ad=ads,
+                            image=image
                         )
-
-                    # Get or create related objects with proper error checking
-                    try:
-                        county_slug = normalize_slug(county_name)
-                        county, _ = County.objects.get_or_create(
-                            slug=county_slug, 
-                            defaults={'county_name': county_name}
-                        )
-
-                        city_slug = normalize_slug(city_name)
-                        city, _ = City.objects.get_or_create(
-                            slug=city_slug, 
-                            county=county, 
-                            defaults={'city_name': city_name}
-                        )
-
-                        category_slug = normalize_slug(category_name)
-                        category, _ = Category.objects.get_or_create(
-                            slug=category_slug, 
-                            defaults={'category': category_name}
-                        )
-
-                        # Assign related objects to the ad
-                        ads.county = county
-                        ads.city = city
-                        ads.category = category
-                        
-                        # Save the ad
-                        ads.save()
-
-                    except Exception as location_error:
-                        logger.error(f"Error processing location/category: {location_error}")
-                        messages.error(request, 'Error processing location or category.')
-                        return render(request, 'ads/post-ads.html', {'form': form})
-
-                    # Process ad images
-                    try:
-                        image_count = int(request.POST.get('length', 0))
-                        for file_num in range(image_count):
-                            image_file = request.FILES.get(f'images{file_num}')
-                            if image_file:
-                                AdsImages.objects.create(
-                                    ad=ads,
-                                    image=image_file
-                                )
-                    except Exception as image_error:
-                        logger.error(f"Error processing images: {image_error}")
-                        messages.warning(request, 'Ad saved, but some images could not be uploaded.')
 
                     # Send notification email
                     try:
                         send_mail(
-                            subject="New Ads Submitted",
-                            message=f"Dear Admin, you received a new ads request from {request.user.email}",
+                            subject="New Ad Submitted",
+                            message=f"New ad submitted by {request.user.email}",
                             from_email=settings.EMAIL_HOST_USER,
                             recipient_list=[settings.EMAIL_HOST_USER],
-                            fail_silently=False,
+                            fail_silently=True,
                         )
-                    except Exception as email_error:
-                        logger.error(f"Email notification failed: {email_error}")
-                        # Non-critical, so we don't stop the process
+                    except Exception as e:
+                        logger.error(f"Email sending failed: {e}")
 
-                # Success message and redirect
-                messages.success(request, 'Your ad has been posted successfully!')
-                return redirect('ads-listing')
+                    messages.success(request, 'Your ad has been posted successfully!')
+                    return redirect('ads-listing')
 
             except Exception as e:
-                # Catch any unexpected errors
-                logger.error(f"Unexpected error in post_ads: {e}", exc_info=True)
-                messages.error(request, f'An unexpected error occurred: {str(e)}')
+                logger.error(f"Error saving ad: {e}")
+                messages.error(request, 'An error occurred while posting your ad.')
                 return render(request, 'ads/post-ads.html', {'form': form})
         else:
-            # Form validation failed
-            logger.warning(f"Form validation failed: {form.errors}")
-            messages.error(request, 'Please correct the errors in the form.')
-            return render(request, 'ads/post-ads.html', {'form': form})
-    
-    # GET request handling (unchanged)
+            messages.error(request, 'Please correct the errors below.')
     else:
-        form = PostAdsForm()
-        categories = Category.objects.all()
-        counties = County.objects.all()
-        cities = City.objects.all()
-        active_time = datetime.now() - timedelta(days=30)
-        top_banners = AdsTopBanner.objects.filter(created_at__gte=active_time)
-        right_banners = AdsRightBanner.objects.filter(created_at__gte=active_time)
-        bottom_banners = AdsBottomBanner.objects.filter(created_at__gte=active_time)
+        form = PostAdsForm(user=request.user)
 
-        context = {
-            'form': form,
-            'categories': categories,
-            'counties': counties,
-            'cities': cities,
-            'top_banners': top_banners,
-            'right_banners': right_banners,
-            'bottom_banners': bottom_banners,
-        }
+    context = {
+        'form': form,
+        'categories': Category.objects.all(),
+        'counties': County.objects.all(),
+        'cities': City.objects.all(),
+        'top_banners': AdsTopBanner.objects.filter(
+            created_at__gte=datetime.now() - timedelta(days=30)
+        ),
+        'right_banners': AdsRightBanner.objects.filter(
+            created_at__gte=datetime.now() - timedelta(days=30)
+        ),
+        'bottom_banners': AdsBottomBanner.objects.filter(
+            created_at__gte=datetime.now() - timedelta(days=30)
+        ),
+    }
 
-        return render(request, 'ads/post-ads.html', context)
+    return render(request, 'ads/post-ads.html', context)
     
 
 # message views
@@ -185,7 +121,8 @@ def send_message(request, ad_id):
         sender=request.user,
         receiver=receiver,
         ad=ad,
-        content=content
+        content=content,
+        is_read=False  # Changed from read to is_read
     )
 
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -202,24 +139,33 @@ def send_message(request, ad_id):
     messages.success(request, 'Message sent successfully!')
     return redirect('ads-detail', ad_id)
 
+
 @login_required
 def inbox(request):
-    conversations = Conversation.get_user_conversations(request.user)
+    conversations = (
+        Conversation.objects.filter(participants=request.user)
+        .select_related('ad', 'ad__author')
+        .prefetch_related('messages')
+        .annotate(
+            latest_message=Max('messages__created_at')
+        )
+        .order_by('-latest_message')
+    )
     
     conversation_data = []
     for conv in conversations:
         other_user = conv.get_other_participant(request.user)
-        latest_message = conv.latest_message
+        latest_message = conv.messages.order_by('-created_at').first()
         
         conversation_data.append({
             'id': conv.id,
             'other_user': other_user,
             'ad': conv.ad,
             'latest_message': latest_message,
-            'unread_count': conv.unread_messages,
+            'unread_count': conv.unread_count,  # Using the model field
         })
 
-    unread_total = sum(conv.unread_messages for conv in conversations)
+    unread_total = sum(conv['unread_count'] for conv in conversation_data)
 
     return render(request, 'ads/inbox.html', {
         'conversations': conversation_data,
@@ -235,6 +181,12 @@ def conversation_detail(request, conversation_id):
             participants=request.user
         )
         
+        # Use the model method to mark messages as read and update unread count
+        conversation.mark_messages_read(request.user)
+        
+        # Update the unread count
+        conversation.update_unread_count(request.user)
+        
         return JsonResponse({
             'id': conversation.id,
             'ad': {
@@ -248,11 +200,24 @@ def conversation_detail(request, conversation_id):
                 'content': msg.content,
                 'created_at': msg.created_at.isoformat(),
                 'is_sender': msg.sender == request.user,
-            } for msg in conversation.messages.all().order_by('created_at')]
+            } for msg in conversation.messages.all().order_by('created_at')],
+            'unread_count': conversation.unread_count  # Add this to update frontend counter
         })
     
-    # Regular template response for non-AJAX requests
-    return render(request, 'ads/conversation_detail.html', {...})
+    conversation = get_object_or_404(
+        Conversation.objects.prefetch_related('messages'),
+        id=conversation_id,
+        participants=request.user
+    )
+    
+    # Mark messages as read for non-AJAX requests too
+    conversation.mark_messages_read(request.user)
+    conversation.update_unread_count(request.user)
+    
+    return render(request, 'ads/conversation_detail.html', {
+        'conversation': conversation,
+        'other_user': conversation.get_other_participant(request.user),
+    })
 
 @login_required
 @require_POST
@@ -269,7 +234,6 @@ def delete_conversation(request, conversation_id):
     
     messages.success(request, 'Conversation deleted successfully.')
     return redirect('inbox')
-
 
 
 def ads_search(request):
@@ -420,6 +384,6 @@ def delete_ad(request, pk):
             return redirect('ads_listing')
     except Exception as e:
         messages.error(request, 'An error occurred while deleting the ad. Please try again.')
-        return redirect('delete_ad', pk=pk)
+        return redirect('ads-delete', pk=pk)
 
     return render(request, 'ads/ads-delete.html', {'ad': ad})

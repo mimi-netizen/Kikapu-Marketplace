@@ -18,11 +18,11 @@
         {% endfor %}
     </div>
 
-    <form method="post" action="{% url 'send_message' conversation.ad.id %}" class="mt-4">
+    <form id="message-form" method="post" action="{% url 'send_message' conversation.ad.id %}" class="mt-4">
         {% csrf_token %}
         <div class="flex space-x-2">
             <textarea 
-                name="message" 
+                name="message"
                 required 
                 class="flex-1 border rounded-lg p-2"
                 placeholder="Type your message..."
@@ -36,4 +36,51 @@
         </div>
     </form>
 </div>
+
+<script>
+document.getElementById('message-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch(this.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex justify-end';
+            messageDiv.innerHTML = `
+                <div class="max-w-2xl rounded-lg p-3 bg-blue-100">
+                    <p>${data.message.content}</p>
+                    <small class="text-gray-600">just now</small>
+                </div>
+            `;
+            
+            document.querySelector('.space-y-4').appendChild(messageDiv);
+            this.reset();
+            window.scrollTo(0, document.body.scrollHeight);
+
+            // Update unread count in UI
+            const messagesBadge = document.querySelector('.messages-badge');
+            if (messagesBadge && data.unread_count !== undefined) {
+                const newCount = data.unread_count;
+                if (newCount > 0) {
+                    messagesBadge.textContent = newCount;
+                    messagesBadge.style.display = 'inline-block';
+                } else {
+                    messagesBadge.style.display = 'none';
+                }
+            }
+        }
+    })
+    .catch(error => console.error('Error:', error));
+});
+</script>
 {% endblock %}

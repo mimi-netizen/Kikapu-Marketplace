@@ -4,7 +4,6 @@ from .models import Ads, Author, County, City, Category, CITY_COUNTY_MAPPING
 from django.core.validators import RegexValidator
 from .models import phone_validator
 
-
 class PostAdsForm(forms.ModelForm):
     # Phone number validator for Kenyan format
     phone_validator = RegexValidator(
@@ -29,7 +28,7 @@ class PostAdsForm(forms.ModelForm):
     )
 
     price = forms.DecimalField(
-        max_digits=10,
+        max_digits=1000,
         decimal_places=2,
         widget=forms.NumberInput(attrs={
             'class': 'form-control ad-post-form',
@@ -58,7 +57,6 @@ class PostAdsForm(forms.ModelForm):
         })
     )
 
-
     category = forms.ModelChoiceField(
         queryset=Category.objects.all(),
         widget=forms.Select(attrs={
@@ -66,7 +64,6 @@ class PostAdsForm(forms.ModelForm):
             'placeholder': 'Select Category'
         })
     )
-
 
     phone_number = forms.CharField(
         widget=forms.TextInput(attrs={
@@ -91,6 +88,16 @@ class PostAdsForm(forms.ModelForm):
         required=False
     )
 
+    images = forms.ImageField(
+        widget=forms.ClearableFileInput(attrs={
+            'class': 'form-control ad-post-form',
+            'multiple': True,
+            'accept': 'image/*'
+        }),
+        required=False,
+        help_text='Max 5 images, 3MB each'
+    )
+
     video_url = forms.URLField(
         widget=forms.URLInput(attrs={
             'class': 'form-control ad-post-form',
@@ -100,21 +107,18 @@ class PostAdsForm(forms.ModelForm):
     )
 
     def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
-        # Set all fields as required by default
         for field in self.fields:
             self.fields[field].required = True
         
-        # Set optional fields
         self.fields['brand'].required = False
         self.fields['video_url'].required = False
         self.fields['city'].required = False
 
-        # Initialize city queryset as empty
         self.fields['city'].queryset = City.objects.none()
 
-        # If county is selected, filter cities
         if 'county' in self.data:
             try:
                 county_id = int(self.data.get('county'))
@@ -124,18 +128,13 @@ class PostAdsForm(forms.ModelForm):
         elif self.instance.pk:
             self.fields['city'].queryset = City.objects.filter(county=self.instance.county)
 
-    def clean(self):
-        cleaned_data = super().clean()
-        city = cleaned_data.get('city')
-        county = cleaned_data.get('county')
-
-        if city and county:
-            if city.county != county:
-                raise forms.ValidationError({
-                    'city': 'Selected city does not belong to the selected county.'
-                })
-
-        return cleaned_data
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if self.user:
+            instance.author = self.user.author
+        if commit:
+            instance.save()
+        return instance
 
     class Meta:
         model = Ads
@@ -151,6 +150,5 @@ class PostAdsForm(forms.ModelForm):
             'email',
             'brand',
             'video_url',
+            'images'
         ]
-
-   

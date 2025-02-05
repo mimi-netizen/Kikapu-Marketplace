@@ -79,7 +79,7 @@
                     <form id="message-form" style="display: none;">
                         {% csrf_token %}
                         <div class="input-group">
-                            <textarea class="form-control" name="content" rows="2" required></textarea>
+                            <textarea class="form-control" name="message" rows="2" required></textarea>
                             <button type="submit" class="btn btn-primary">Send</button>
                         </div>
                     </form>
@@ -130,11 +130,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const conversationId = this.dataset.conversationId;
             loadConversation(conversationId);
             
-            // Update active state
             document.querySelectorAll('.conversation-item').forEach(i => i.classList.remove('active'));
             this.classList.add('active');
-            
-            // Remove bold styling (unread indicator)
             this.classList.remove('fw-bold');
         });
     });
@@ -152,21 +149,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 messageForm.style.display = 'block';
                 conversationInfo.style.display = 'block';
                 
-                // Update conversation title and info
                 conversationTitle.textContent = `Chat with ${data.other_user.username}`;
                 document.getElementById('ad-link').href = `/ads/${data.ad.id}/`;
-                
-                // Update form action
                 messageForm.action = `/send-message/${data.ad.id}/`;
                 
-                // Render messages
                 messagesContainer.innerHTML = '';
                 data.messages.forEach(message => {
                     const messageElement = createMessageElement(message);
                     messagesContainer.appendChild(messageElement);
                 });
                 
-                // Scroll to bottom
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             });
     }
@@ -187,11 +179,16 @@ document.addEventListener('DOMContentLoaded', function() {
         return div;
     }
 
-    // Handle message form submission
     messageForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
         const formData = new FormData(this);
+        const messageContent = formData.get('message');
+        
+        if (!messageContent) {
+            return;
+        }
+
         fetch(this.action, {
             method: 'POST',
             body: formData,
@@ -202,25 +199,29 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(data => {
-            if (!data.error) {
-                // Add new message to conversation
+            if (data.status === 'success') {
                 const messageElement = createMessageElement({
-                    content: formData.get('message'),
-                    created_at: new Date().toISOString(),
+                    content: messageContent,
+                    created_at: data.message.created_at,
                     is_sender: true
                 });
                 messagesContainer.appendChild(messageElement);
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
                 
-                // Clear form
                 this.reset();
+                
+                if (currentConversationId) {
+                    loadConversation(currentConversationId);
+                }
             } else if (data.login_required) {
                 window.location.href = '/login/';
             }
+        })
+        .catch(error => {
+            console.error('Error sending message:', error);
         });
     });
 
-    // Handle conversation deletion
     deleteConversationBtn.addEventListener('click', function() {
         if (!currentConversationId || !confirm('Are you sure you want to delete this conversation?')) {
             return;
@@ -241,7 +242,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Helper function to get CSRF token
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -257,12 +257,11 @@ document.addEventListener('DOMContentLoaded', function() {
         return cookieValue;
     }
 
-    // Optional: Set up periodic refresh
     setInterval(() => {
         if (currentConversationId) {
             loadConversation(currentConversationId);
         }
-    }, 10000); // Refresh every 10 seconds
+    }, 10000);
 });
 </script>
 {% endblock %}

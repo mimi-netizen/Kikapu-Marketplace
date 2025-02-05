@@ -39,13 +39,13 @@ class Conversation(models.Model):
 
     class Meta:
         ordering = ['-updated_at']
-        constraints = [
-            models.UniqueConstraint(
-                fields=['ad'],
-                condition=Q(participants__isnull=False),
-                name='unique_conversation_per_ad'
-            )
-        ]
+        # constraints = [
+        #     models.UniqueConstraint(
+        #         fields=['ad'],
+        #         condition=Q(participants__isnull=False),
+        #         name='unique_conversation_per_ad'
+        #     )
+        # ]
         indexes = [
             models.Index(fields=['-updated_at']),
             models.Index(fields=['-last_message_time']),
@@ -60,6 +60,12 @@ class Conversation(models.Model):
         return self.participants.exclude(id=user.id).first()
 
     @property
+    def unread_messages(self):
+        return self.messages.filter(read=False, receiver=self.user).count()
+
+    def get_unread_messages_for_user(self, user):
+        return self.messages.filter(read=False, receiver=user).count() 
+    
     def latest_message(self):
         return self.messages.select_related('sender', 'receiver').first()
 
@@ -83,23 +89,26 @@ class Conversation(models.Model):
         return messages_updated
 
     @classmethod
+    @classmethod
     def get_or_create_conversation(cls, user1, user2, ad):
         conversation = cls.objects.filter(
-            participants=user1,
-            ad=ad
+            participants=user1
         ).filter(
             participants=user2
+        ).filter(
+            ad=ad
         ).first()
-
+        
         if not conversation:
-            conversation = cls.objects.create(
-                ad=ad,
-                last_message_time=timezone.now()
-            )
+            conversation = cls.objects.create(ad=ad)
             conversation.participants.add(user1, user2)
-
+        
         return conversation
 
+    def get_other_participant(self, user):
+        return self.participants.exclude(id=user.id).first()
+    
+    
     @classmethod
     def get_user_conversations(cls, user):
         return cls.objects.filter(
@@ -172,6 +181,8 @@ class Message(models.Model):
             self.conversation.save(
                 update_fields=['last_message_time', 'updated_at', 'unread_count']
             )
+
+        read = models.BooleanField(default=False)
 
 # County Model
 class County(models.Model):
@@ -477,6 +488,8 @@ class Category(models.Model):
         ('Health', 'Health'),
         ('Beauty', 'Beauty'),
         ('Other', 'Other'),
+        ('Adult Products', 'Adult Products'),
+        ('Intimacy & Relationships', 'Intimacy & Relationships')
     ]
 
     category = models.CharField(

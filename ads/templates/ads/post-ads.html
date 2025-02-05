@@ -60,15 +60,6 @@
                                 </div>
                             {% endfor %}
 
-                            <!-- File Upload Section -->
-                            <div class="form-group mb-3">
-                                <label>Images <span class="req-aseteric">*</span> 
-                                    <span class="h-text">(Max 5 images, 3MB each)</span>
-                                </label>
-                                <input type="file" class="filepond" name="images" multiple>
-                                <div class="error-msg" id="imagesmsg"></div>
-                            </div>
-
                             <button type="submit" class="btn btn-common mt-3 w-100">Post Ad</button>
                         </form>
                     </div>
@@ -104,36 +95,30 @@
     </div>
 {% endfor %}
 
-<!-- Required Scripts -->
-<script src="https://unpkg.com/filepond-plugin-file-validate-size"></script>
-<script src="https://unpkg.com/filepond-plugin-file-validate-type"></script>
-<script src="https://unpkg.com/filepond"></script>
-<link href="https://unpkg.com/filepond/dist/filepond.css" rel="stylesheet">
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // FilePond initialization
-    FilePond.registerPlugin(FilePondPluginFileValidateSize);
-    FilePond.registerPlugin(FilePondPluginFileValidateType);
+    const imageInput = document.querySelector('input[name="images"]');
     
-    const inputElement = document.querySelector('input[type="file"]');
-    const pond = FilePond.create(inputElement, {
-        allowMultiple: true,
-        maxFiles: 5,
-        maxFileSize: '3MB',
-        acceptedFileTypes: ['image/png', 'image/jpeg'],
-        server: {
-            process: {
-                url: '{% url "post-ads" %}',
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                }
+    imageInput.addEventListener('change', function() {
+        const files = this.files;
+        
+        // Check number of files
+        if (files.length > 5) {
+            alert('You can only upload up to 5 images');
+            this.value = '';
+            return;
+        }
+        
+        // Check file sizes
+        for (let i = 0; i < files.length; i++) {
+            if (files[i].size > 3 * 1024 * 1024) { // 3MB in bytes
+                alert('Each image must be less than 3MB');
+                this.value = '';
+                return;
             }
         }
     });
-});
 
-document.addEventListener('DOMContentLoaded', function() {
     const countySelect = document.getElementById('id_county');
     const citySelect = document.getElementById('id_city');
 
@@ -141,7 +126,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const countyId = this.value;
         citySelect.innerHTML = '<option value="">Loading cities...</option>';
 
-        fetch(`/get-cities/${countyId}/`)  // Create this URL endpoint
+        fetch(`/get-cities/${countyId}/`)
             .then(response => response.json())
             .then(data => {
                 citySelect.innerHTML = '<option value="">Select City</option>';
@@ -155,6 +140,5 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-
 
 {% endblock content %}

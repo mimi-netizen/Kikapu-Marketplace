@@ -16,5 +16,5 @@ urlpatterns = [
     path('inbox/', views.inbox, name='inbox'),
     path('conversation/<int:conversation_id>/', views.conversation_detail, name='conversation_detail'),
     path('conversation/<int:conversation_id>/delete/', views.delete_conversation, name='delete_conversation'),
-    path('send-message/<int:ad_id>/', views.send_message, name='send_message'),
+    path('send-message/<int:ad_id>/', views.send_message, name='send-message')
 ]
