@@ -130,7 +130,13 @@ class Conversation(models.Model):
             self.save(update_fields=['last_message_time', 'updated_at'])
 
 class Message(models.Model):
-    conversation = models.ForeignKey(Conversation, related_name='messages', on_delete=models.CASCADE)
+    conversation = models.ForeignKey(
+        Conversation, 
+        related_name='messages', 
+        on_delete=models.CASCADE, 
+        null=True,  # Keep this temporarily
+        default=None  
+    )
     sender = models.ForeignKey(User, related_name='sent_messages', on_delete=models.CASCADE)
     receiver = models.ForeignKey(User, related_name='received_messages', on_delete=models.CASCADE)
     ad = models.ForeignKey('Ads', on_delete=models.CASCADE, related_name='messages')

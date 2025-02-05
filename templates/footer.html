@@ -23,7 +23,7 @@
                   {% for ad in footer_recent_ads %}
 
                   <div class="media-left">
-                    {% for img in ad.adsimages_set.all %}
+                    {% for img in ad.images.all %}
                     <img class="img-fluid" src="{{ img.image.url }}" alt="">
                     {% endfor %}
                     
