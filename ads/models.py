@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 import uuid
+from django.db.models import Q, Count, F
 
 # Phone Number Validator
 phone_validator = RegexValidator(
@@ -26,22 +27,145 @@ class Author(models.Model):
 
     def __str__(self):
         return self.user.username
-    
-# message model
+
+# Messages Model   
+class Conversation(models.Model):
+    participants = models.ManyToManyField(User, related_name='conversations')
+    ad = models.ForeignKey('Ads', on_delete=models.CASCADE, related_name='conversations')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    last_message_time = models.DateTimeField(null=True, blank=True)
+    unread_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['-updated_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['ad'],
+                condition=Q(participants__isnull=False),
+                name='unique_conversation_per_ad'
+            )
+        ]
+        indexes = [
+            models.Index(fields=['-updated_at']),
+            models.Index(fields=['-last_message_time']),
+            models.Index(fields=['unread_count']),
+        ]
+
+    def __str__(self):
+        participants = self.participants.values_list('username', flat=True)
+        return f"Conversation about {self.ad} between {', '.join(participants)}"
+
+    def get_other_participant(self, user):
+        return self.participants.exclude(id=user.id).first()
+
+    @property
+    def latest_message(self):
+        return self.messages.select_related('sender', 'receiver').first()
+
+    def update_unread_count(self, user=None):
+        query = self.messages.filter(is_read=False)
+        if user:
+            query = query.filter(receiver=user)
+        self.unread_count = query.count()
+        self.save(update_fields=['unread_count'])
+
+    def mark_messages_read(self, user):
+        messages_updated = self.messages.filter(
+            receiver=user,
+            is_read=False
+        ).update(is_read=True)
+        
+        if messages_updated:
+            self.update_unread_count(user)
+            self.save(update_fields=['updated_at'])
+        
+        return messages_updated
+
+    @classmethod
+    def get_or_create_conversation(cls, user1, user2, ad):
+        conversation = cls.objects.filter(
+            participants=user1,
+            ad=ad
+        ).filter(
+            participants=user2
+        ).first()
+
+        if not conversation:
+            conversation = cls.objects.create(
+                ad=ad,
+                last_message_time=timezone.now()
+            )
+            conversation.participants.add(user1, user2)
+
+        return conversation
+
+    @classmethod
+    def get_user_conversations(cls, user):
+        return cls.objects.filter(
+            participants=user
+        ).annotate(
+            unread_messages=Count(
+                'messages',
+                filter=Q(messages__is_read=False, messages__receiver=user)
+            )
+        ).select_related('ad').prefetch_related('participants')
+
+    @classmethod
+    def get_conversation_with_messages(cls, conversation_id, user):
+        return cls.objects.filter(
+            id=conversation_id,
+            participants=user
+        ).prefetch_related(
+            models.Prefetch(
+                'messages',
+                queryset=Message.objects.select_related('sender', 'receiver')
+            )
+        ).first()
+
+    def update_last_message_time(self):
+        latest = self.messages.first()
+        if latest:
+            self.last_message_time = latest.created_at
+            self.save(update_fields=['last_message_time', 'updated_at'])
 
 class Message(models.Model):
+    conversation = models.ForeignKey(Conversation, related_name='messages', on_delete=models.CASCADE)
     sender = models.ForeignKey(User, related_name='sent_messages', on_delete=models.CASCADE)
     receiver = models.ForeignKey(User, related_name='received_messages', on_delete=models.CASCADE)
-    ad = models.ForeignKey('Ads', on_delete=models.CASCADE)  # Changed from 'Ad' to 'Ads'
+    ad = models.ForeignKey('Ads', on_delete=models.CASCADE, related_name='messages')
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['is_read']),
+            models.Index(fields=['-created_at']),
+        ]
 
     def __str__(self):
         return f"Message from {self.sender} to {self.receiver} about {self.ad}"
+
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+        
+        if not hasattr(self, 'conversation'):
+            self.conversation = Conversation.get_or_create_conversation(
+                self.sender,
+                self.receiver,
+                self.ad
+            )
+
+        super().save(*args, **kwargs)
+
+        if is_new:
+            self.conversation.last_message_time = self.created_at
+            self.conversation.unread_count = F('unread_count') + 1
+            self.conversation.save(
+                update_fields=['last_message_time', 'updated_at', 'unread_count']
+            )
 
 # County Model
 class County(models.Model):

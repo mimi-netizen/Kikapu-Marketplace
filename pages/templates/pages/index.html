@@ -61,7 +61,7 @@
           <div class="col-xs-6 col-sm-6 col-md-6 col-lg-4">
             <div class="featured-box">
               <figure>
-                {% for img in featured_ad.adsimages_set.all %}
+                {% for img in featured_ad.images.all %}
                 {% if forloop.first %}
                 <a href="{% url 'ads-detail' featured_ad.id %}"><img class="img-fluid" src="{{ img.image.url }}"
                     alt=""></a>
@@ -91,7 +91,7 @@
                   </li>
                 </ul>
                 <div class="listing-bottom">
-                  <h3 class="price float-left">$ {{ featured_ad.price }}</h3>
+                  <h3 class="price float-left">Ksh {{ featured_ad.price }}</h3>
                   <p href="#" class="btn-verified float-right"><i class="lni-check-box"></i>
                     Verified Ad</p>
                 </div>
@@ -149,7 +149,7 @@
               <div class="featured-box">
                 <figure>
                   <a href="{% url 'ads-detail' recent_ad.id %}">
-                    {% for img in recent_ad.adsimages_set.all %}
+                    {% for img in recent_ad.images.all %}
                     {% if forloop.first %}
                     <img class="img-fluid" src="{{ img.image.url }}" alt="">
                     {% endif %}
@@ -179,7 +179,7 @@
                     </li>
                   </ul>
                   <div class="listing-bottom">
-                    <h3 class="price float-left">$ {{ recent_ad.price }}</h3>
+                    <h3 class="price float-left">Ksh {{ recent_ad.price }}</h3>
                     <p class="btn-verified float-right"><i class="lni-check-box"></i> Verified
                       Ad</p>
                   </div>

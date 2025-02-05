@@ -68,7 +68,7 @@
                   <div class="featured-box">
                     <figure>
                       <a href="{% url 'ads-detail' ad_listing.id %}">
-                        {% for img in ad_listing.adsimages_set.all %}
+                        {% for img in ad_listing.images.all %}
                         {% if forloop.first %}
                         <img class="img-fluid" src="{{ img.image.url }}" alt="">
                         {% endif %}
@@ -96,7 +96,7 @@
                         </li>
                       </ul>
                       <div class="listing-bottom">
-                        <h3 class="price float-left">$ {{ ad_listing.price }}</h3>
+                        <h3 class="price float-left">Ksh {{ ad_listing.price }}</h3>
                         <p class="btn-verified float-right"><i class="lni-check-box"></i>
                           Verified Ad</p>
                       </div>
@@ -104,9 +104,6 @@
                       <!-- Add the Message Seller Button -->
                       <div class="ads-btn mb-4">
                         <!-- Email and Phone buttons -->
-                        <a href="mailto:{{ ad_listing.author.user.email }}" class="btn btn-common btn-reply">
-                            <i class="lni-envelope"></i> {{ ad_listing.author.user.email }}
-                        </a>
                         <a href="tel:{{ ad_listing.phone }}" class="btn btn-common">
                             <i class="lni-phone-handset"></i>{{ ad_listing.phone }}
                         </a>

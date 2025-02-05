@@ -8,7 +8,7 @@ from django.http import JsonResponse
 from ads.forms import PostAdsForm
 from ads.models import Ads, Author, AdsImages, County, City, Category, AdsTopBanner, AdsRightBanner, AdsBottomBanner
 from datetime import datetime, timedelta
-from .models import Message
+from .models import Conversation, Message
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.utils.text import slugify
@@ -18,17 +18,21 @@ import logging
 from django.db import transaction
 
 def ads_listing(request):
-    ads = Ads.objects.all().order_by('-date_created')
+    ads_listing = Ads.objects.all().order_by('-date_created')
     active_time = datetime.now() - timedelta(days=30)
     top_banners = AdsTopBanner.objects.filter(created_at__gte=active_time)
     right_banners = AdsRightBanner.objects.filter(created_at__gte=active_time)
     bottom_banners = AdsBottomBanner.objects.filter(created_at__gte=active_time)
+    category_listing = Category.objects.all()
+    county_listing = County.objects.all()
 
     context = {
-        'ads': ads,
+        'ads_listing': ads_listing,
         'top_banners': top_banners,
         'right_banners': right_banners,
         'bottom_banners': bottom_banners,
+        'category_listing': category_listing,  
+        'county_listing': county_listing,      
     }
 
     return render(request, 'ads/ads-listing.html', context)
@@ -82,7 +86,7 @@ def post_ads(request):
                         category_slug = normalize_slug(category_name)
                         category, _ = Category.objects.get_or_create(
                             slug=category_slug, 
-                            defaults={'main_category': category_name}
+                            defaults={'category': category_name}
                         )
 
                         # Assign related objects to the ad
@@ -127,7 +131,7 @@ def post_ads(request):
 
                 # Success message and redirect
                 messages.success(request, 'Your ad has been posted successfully!')
-                return redirect('ads_listing')
+                return redirect('ads-listing')
 
             except Exception as e:
                 # Catch any unexpected errors
@@ -165,64 +169,106 @@ def post_ads(request):
     
 
 # message views
+@login_required
 def send_message(request, ad_id):
-    if not request.user.is_authenticated:
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'error': 'Please log in to send messages',
-                'login_required': True
-            }, status=403)
-        messages.info(request, 'Please log in to send messages')
-        return redirect('login')
-
-    if request.method == 'POST':
-        ad = get_object_or_404(Ads, id=ad_id)
-        content = request.POST.get('message')
-        
-        Message.objects.create(
-            sender=request.user,
-            receiver=ad.author.user,
-            ad=ad,
-            content=content
-        )
-        
-        messages.success(request, 'Message sent successfully!')
+    if request.method != 'POST':
         return redirect('ads-detail', ad_id)
+
+    ad = get_object_or_404(Ads, id=ad_id)
+    content = request.POST.get('message')
+    receiver = ad.author.user
+
+    conversation = Conversation.get_or_create_conversation(request.user, receiver, ad)
+
+    message = Message.objects.create(
+        conversation=conversation,
+        sender=request.user,
+        receiver=receiver,
+        ad=ad,
+        content=content
+    )
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            'status': 'success',
+            'message': {
+                'id': message.id,
+                'content': message.content,
+                'created_at': message.created_at.isoformat(),
+                'sender_username': message.sender.username
+            }
+        })
+
+    messages.success(request, 'Message sent successfully!')
     return redirect('ads-detail', ad_id)
 
 @login_required
 def inbox(request):
-    received_messages = Message.objects.filter(
-        receiver=request.user
-    ).select_related('sender', 'ad').order_by('-created_at')
-    sent_messages = Message.objects.filter(sender=request.user)
+    conversations = Conversation.get_user_conversations(request.user)
     
-    unread_messages_count = received_messages.filter(is_read=False).count()
-    
-    context = {
-        'received_messages': received_messages,
-        'sent_messages': sent_messages,
-        'unread_messages_count': unread_messages_count,
-    }
-    return render(request, 'ads/inbox.html', context)
+    conversation_data = []
+    for conv in conversations:
+        other_user = conv.get_other_participant(request.user)
+        latest_message = conv.latest_message
+        
+        conversation_data.append({
+            'id': conv.id,
+            'other_user': other_user,
+            'ad': conv.ad,
+            'latest_message': latest_message,
+            'unread_count': conv.unread_messages,
+        })
+
+    unread_total = sum(conv.unread_messages for conv in conversations)
+
+    return render(request, 'ads/inbox.html', {
+        'conversations': conversation_data,
+        'unread_messages_count': unread_total,
+    })
 
 @login_required
-def message_detail(request, message_id):
-    message = get_object_or_404(Message, id=message_id, receiver=request.user)
-    if not message.is_read:
-        message.is_read = True
-        message.save()
-    return render(request, 'ads/message_detail.html', {'message': message})
+def conversation_detail(request, conversation_id):
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        conversation = get_object_or_404(
+            Conversation.objects.prefetch_related('messages'),
+            id=conversation_id,
+            participants=request.user
+        )
+        
+        return JsonResponse({
+            'id': conversation.id,
+            'ad': {
+                'id': conversation.ad.id,
+                'title': conversation.ad.title,
+            },
+            'other_user': {
+                'username': conversation.get_other_participant(request.user).username,
+            },
+            'messages': [{
+                'content': msg.content,
+                'created_at': msg.created_at.isoformat(),
+                'is_sender': msg.sender == request.user,
+            } for msg in conversation.messages.all().order_by('created_at')]
+        })
+    
+    # Regular template response for non-AJAX requests
+    return render(request, 'ads/conversation_detail.html', {...})
 
 @login_required
 @require_POST
-def delete_message(request, message_id):
-    message = get_object_or_404(Message, id=message_id)
-    # Check if the user has permission to delete the message
-    if request.user == message.sender or request.user == message.receiver:
-        message.delete()
+def delete_conversation(request, conversation_id):
+    conversation = get_object_or_404(
+        Conversation,
+        id=conversation_id,
+        participants=request.user
+    )
+    conversation.delete()
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return JsonResponse({'status': 'success'})
-    return JsonResponse({'status': 'error'}, status=403)
+    
+    messages.success(request, 'Conversation deleted successfully.')
+    return redirect('inbox')
 
 
 
@@ -289,57 +335,57 @@ def ads_detail(request, pk):
 
 def ads_by_category(request, category_slug):
     category = get_object_or_404(Category, slug=category_slug)
-    ads = Ads.objects.filter(category=category)
+    ads_by_category = Ads.objects.filter(category=category) 
     active_time = datetime.now() - timedelta(days=30)
     top_banners = AdsTopBanner.objects.filter(created_at__gte=active_time)
     right_banners = AdsRightBanner.objects.filter(created_at__gte=active_time)
     bottom_banners = AdsBottomBanner.objects.filter(created_at__gte=active_time)
 
     context = {
-        'ads': ads,
+        'ads_by_category': ads_by_category,  
         'category': category,
         'top_banners': top_banners,
         'right_banners': right_banners,
         'bottom_banners': bottom_banners,
     }
 
-    return render(request, 'ads/ads-by-category.html', context)
+    return render(request, 'ads/category-archive.html', context)
 
 def ads_by_county(request, county_slug):
     county = get_object_or_404(County, slug=county_slug)
-    ads = Ads.objects.filter(county=county)
+    ads_by_county = Ads.objects.filter(county=county)
     active_time = datetime.now() - timedelta(days=30)
     top_banners = AdsTopBanner.objects.filter(created_at__gte=active_time)
     right_banners = AdsRightBanner.objects.filter(created_at__gte=active_time)
     bottom_banners = AdsBottomBanner.objects.filter(created_at__gte=active_time)
 
     context = {
-        'ads': ads,
+        'ads_by_county': ads_by_county,
         'county': county,
         'top_banners': top_banners,
         'right_banners': right_banners,
         'bottom_banners': bottom_banners,
     }
 
-    return render(request, 'ads/ads-by-county.html', context)
+    return render(request, 'ads/county-archive.html', context)
 
 def ads_by_city(request, city_slug):
     city = get_object_or_404(City, slug=city_slug)
-    ads = Ads.objects.filter(city=city)
+    ads_by_city = Ads.objects.filter(city=city)
     active_time = datetime.now() - timedelta(days=30)
     top_banners = AdsTopBanner.objects.filter(created_at__gte=active_time)
     right_banners = AdsRightBanner.objects.filter(created_at__gte=active_time)
     bottom_banners = AdsBottomBanner.objects.filter(created_at__gte=active_time)
 
     context = {
-        'ads': ads,
+        'ads_by_city': ads_by_city,
         'city': city,
         'top_banners': top_banners,
         'right_banners': right_banners,
         'bottom_banners': bottom_banners,
     }
 
-    return render(request, 'ads/ads-by-city.html', context)
+    return render(request, 'ads/city-archive.html', context)
 
 def get_cities(request, county_id):
     cities = City.objects.filter(county_id=county_id).values('id', 'city_name')
@@ -362,6 +408,7 @@ def ads_author_archive(request, pk):
     }
 
     return render(request, 'ads/author-archive.html', context)
+
 
 @login_required(login_url='login')
 def delete_ad(request, pk):

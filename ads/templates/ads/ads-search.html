@@ -17,7 +17,7 @@
           <div class="featured-box">
             <figure>
               <a href="{% url 'ads-detail' ad_search.id %}">
-                  {% for img in ad_search.adsimages_set.all %}
+                  {% for img in ad_search.images.all %}
                   {% if forloop.first %}
                       <img class="img-fluid" src="{{ img.image.url }}" alt="">
                   {% endif %}
@@ -47,7 +47,7 @@
                 </li>
               </ul>
               <div class="listing-bottom">
-                <h3 class="price float-left">$ {{ ad_search.price }}</h3>
+                <h3 class="price float-left">Ksh {{ ad_search.price }}</h3>
                 <p class="btn-verified float-right"><i class="lni-check-box"></i> Verified
                   Ad</p>
               </div>
