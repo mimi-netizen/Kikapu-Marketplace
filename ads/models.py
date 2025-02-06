@@ -254,6 +254,10 @@ class County(models.Model):
             self.slug = unique_slug
         super().save(*args, **kwargs)
 
+    @property
+    def total_ads(self):
+        return self.ads.count()  
+
     class Meta:
         verbose_name_plural = "Counties"
 
@@ -511,6 +515,10 @@ class Category(models.Model):
             self.slug = unique_slug
         super().save(*args, **kwargs)
 
+    @property
+    def total_ads(self):
+        return self.ads.count()  
+
     def __str__(self):
         return self.category
 
@@ -531,7 +539,7 @@ class Ads(models.Model):
         unique=True
     )
     author = models.ForeignKey(Author, on_delete=models.CASCADE, null=True)
-    county = models.ForeignKey(County, on_delete=models.SET_NULL, null=True)
+    county = models.ForeignKey(County, on_delete=models.SET_NULL, null=True, related_name='ads')
     city = models.ForeignKey(City, on_delete=models.SET_NULL, null=True)
     category = models.ForeignKey(
         Category, 

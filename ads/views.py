@@ -16,28 +16,50 @@ from django.views.decorators.http import require_POST
 import unicodedata
 import logging
 from django.db import transaction
+from django.core.paginator import Paginator
+
 
 def ads_listing(request):
+    # Fetch all ads ordered by creation date
     ads_listing = Ads.objects.all().order_by('-date_created')
+
+    # Search functionality
+    query = request.GET.get('q')
+    if query:
+        ads_listing = ads_listing.filter(
+            Q(title__icontains=query) |
+            Q(description__icontains=query)  # Add more fields as needed
+        )
+
+    # Paginate the ads
+    paginator = Paginator(ads_listing, 24)  # Show 24 ads per page
+    page_number = request.GET.get('page')
+    ads_page = paginator.get_page(page_number)
+
+    # Fetch active banners (created within the last 30 days)
     active_time = datetime.now() - timedelta(days=30)
     top_banners = AdsTopBanner.objects.filter(created_at__gte=active_time)
     right_banners = AdsRightBanner.objects.filter(created_at__gte=active_time)
     bottom_banners = AdsBottomBanner.objects.filter(created_at__gte=active_time)
-    category_listing = Category.objects.all()
-    county_listing = County.objects.all()
 
+    # Fetch all categories and annotate with the count of related ads
+    category_listing = Category.objects.annotate(ads_count=Count('ads'))
+
+    # Fetch all counties and annotate with the count of related ads
+    county_listing = County.objects.annotate(ads_count=Count('ads'))
+
+    # Context for the template
     context = {
-        'ads_listing': ads_listing,
+        'ads_listing': ads_page,  # Pass paginated ads
         'top_banners': top_banners,
         'right_banners': right_banners,
         'bottom_banners': bottom_banners,
-        'category_listing': category_listing,  
-        'county_listing': county_listing,      
+        'category_listing': category_listing,  # Pass annotated categories
+        'county_listing': county_listing,     # Pass annotated counties
+        'query': query,  # Pass the search query to the template
     }
 
     return render(request, 'ads/ads-listing.html', context)
-
-
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -239,34 +261,47 @@ def delete_conversation(request, conversation_id):
 def ads_search(request):
     county_slug = request.GET.get('county_slug')
     category_slug = request.GET.get('category_slug')
+    query = request.GET.get('query', '').strip()  # Get the search query
 
     county = None
     category = None
 
+    # Fetch county and category if their slugs are provided
     if county_slug:
         county = get_object_or_404(County, slug=county_slug)
     if category_slug:
         category = get_object_or_404(Category, slug=category_slug)
 
+    # Base queryset for ads
+    ads_search_result = Ads.objects.all()
+
+    # Filter by county and/or category
     if county and category:
-        ads_search_result = Ads.objects.filter(county=county, category=category)
+        ads_search_result = ads_search_result.filter(county=county, category=category)
     elif county:
-        ads_search_result = Ads.objects.filter(county=county)
+        ads_search_result = ads_search_result.filter(county=county)
     elif category:
-        ads_search_result = Ads.objects.filter(category=category)
-    else:
-        ads_search_result = Ads.objects.all()
-    
+        ads_search_result = ads_search_result.filter(category=category)
+
+    # Filter by search query (if provided)
+    if query:
+        ads_search_result = ads_search_result.filter(
+            Q(title__icontains=query) | Q(description__icontains=query)
+        ).distinct()
+
+    # Fetch active banners
     active_time = datetime.now() - timedelta(days=30)
     top_banners = AdsTopBanner.objects.filter(created_at__gte=active_time)
     right_banners = AdsRightBanner.objects.filter(created_at__gte=active_time)
     bottom_banners = AdsBottomBanner.objects.filter(created_at__gte=active_time)
 
+    # Context for the template
     context = {
         'ads_search_result': ads_search_result,
         'top_banners': top_banners,
         'right_banners': right_banners,
         'bottom_banners': bottom_banners,
+        'query': query,  # Pass the query to the template
     }
 
     return render(request, 'ads/ads-search.html', context)

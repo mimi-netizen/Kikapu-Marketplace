@@ -22,7 +22,7 @@ A few of the things you can do with Kikapu:
 
 * Signup and confirm your email account to be able to logged in
 * Post an advertisement with a user friendly file upload system
-* Admin must approve the ad in order for it to appear in the website 
+* Message a seller in-app 
 * Browse all advertisements listing
 * Browse Featured advertisements
 * Browse Most Recent advertisements 
@@ -34,18 +34,7 @@ A few of the things you can do with Kikapu:
 * Email/Phone the Buyer to purchase an advertised product
 
 
-## Installation Process
 
-**Installation Process (Windows)**
-
-1. Create a Virtual Environment `virtualenv projectenv`
-2. Go To environment Directory `cd projectenv/scripts`
-3. Activate Virtual Environment `activate`
-4. Clone This Project `git clone https://github.com/mimi-netizen/Kikapu-Marketplace`
-5. Go To Project Directory `cd Django-Classified-Ads`
-6. Install Required Package `pip install -r requirements.txt`
-7. Migrate Database `python manage.py migrate`
-8. Finally Run The Project `python manage.py runserver`
 
 ## Project Demo
 

@@ -2,6 +2,170 @@
 {% load static %}
 {% block content %}
 
+<style>
+  .featured-box {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+    transition: transform 0.2s;
+  }
+
+  .featured-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+
+  .featured-box figure {
+    position: relative;
+    width: 100%;
+    padding-top: 75%; /* 4:3 Aspect Ratio */
+    margin-bottom: 8px;
+  }
+
+  .featured-box figure img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 4px;
+  }
+
+  .feature-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .feature-content h4 {
+    font-size: 12px;
+    line-height: 1.4;
+    margin-bottom: 8px;
+    color: #333;
+  }
+
+  .feature-content h4 a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .price {
+    font-size: 16px;
+    color: #89613A;
+    font-weight: 600;
+    margin-top: auto;
+  }
+
+  .product {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 4px;
+  }
+
+  .product a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .ad-description {
+    font-size: 12px;
+    color: #666;
+    line-height: 1.4;
+    margin-bottom: 8px;
+  }
+
+  .show-more {
+    color: #89613A;
+    text-decoration: none;
+    font-size: 12px;
+    margin-left: 5px;
+  }
+
+  .show-more:hover {
+    text-decoration: underline;
+  }
+
+  .carousel-container {
+    position: relative;
+    max-width: 100%;
+    margin: auto;
+  }
+
+  .carousel-slide {
+    display: none;
+    width: 100%;
+  }
+
+  .carousel-slide img {
+    width: 100%;
+    height: auto;
+  }
+
+  .carousel-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: none;
+    padding: 16px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: background-color 0.3s;
+  }
+
+  .carousel-button:hover {
+    background-color: rgba(0, 0, 0, 0.8);
+  }
+
+  .prev {
+    left: 0;
+    border-radius: 0 3px 3px 0;
+  }
+
+  .next {
+    right: 0;
+    border-radius: 3px 0 0 3px;
+  }
+
+#hero-area {
+  background-image: url('{% static "images/kikapu.jpg" %}');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+  padding: 60px 0; /* Adjust padding as needed */
+}
+
+#hero-area .overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(137, 97, 58 0.79); /* Semi-transparent overlay */
+}
+
+#hero-area .contents {
+  position: relative;
+  z-index: 1;
+  color: white; /* Ensure text is readable */
+}
+
+#hero-area .head-title,
+#hero-area p,
+#hero-area .search-bar {
+  color: white;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5); /* Add text shadow for better readability */
+}
+  
+</style>
+
 <!-- Filter Area Start -->
 <div id="hero-area">
   <div class="overlay"></div>
@@ -17,26 +181,8 @@
             <div class="search-inner">
               <form method="GET" class="search-form" action="{% url 'ads-search' %}">
                 <div class="form-group inputwithicon">
-                  <i class="lni-map-marker"></i>
-                  <div class="select">
-                    <select name="county_name">
-                      <option selected="true" disabled="disabled">Select County</option>
-                      {% for county_name in county_search %}
-                      <option value="{{ county_name }}">{{ county_name }}</option>
-                      {% endfor %}
-                    </select>
-                  </div>
-                </div>
-                <div class="form-group inputwithicon">
-                  <i class="lni-menu"></i>
-                  <div class="select">
-                    <select name="category_name">
-                      <option selected="true" disabled="disabled">Select Category</option>
-                      {% for category_name in category_search %}
-                      <option value="{{ category_name }}">{{ category_name }}</option>
-                      {% endfor %}
-                    </select>
-                  </div>
+                  <i class="lni-search"></i>
+                  <input type="text" name="query" placeholder="What are you looking for?" class="form-control">
                 </div>
                 <button class="btn btn-common" type="submit"><i class="lni-search"></i> Search Now</button>
               </form>
@@ -50,51 +196,41 @@
 <!-- Filter Area End -->
 
 <!-- Main Area Start -->
-<div class="container-fluid">
+<div class="container-fluid px-4">
   <div class="row">
     <div class="col-lg-12 col-md-12 col-xs-12">
       <!-- Featured Ads Listings Starts -->
       <section id="featured" class="section-padding">
-        <h1 class="section-title">Featured Classifieds</h1>
+        <h1 class="section-title mb-4">Featured Classifieds</h1>
         <div class="row">
           {% for featured_ad in featured_ads %}
-          <div class="col-xs-6 col-sm-6 col-md-6 col-lg-4">
+          <div class="col-6 col-sm-4 col-md-3 col-lg-2 mb-4">
             <div class="featured-box">
               <figure>
                 {% for img in featured_ad.images.all %}
                 {% if forloop.first %}
-                <a href="{% url 'ads-detail' featured_ad.id %}"><img class="img-fluid" src="{{ img.image.url }}"
-                    alt=""></a>
+                <a href="{% url 'ads-detail' featured_ad.id %}">
+                  <img src="{{ img.image.url }}" alt="{{ featured_ad.title }}">
+                </a>
                 {% endif %}
                 {% endfor %}
               </figure>
-
               <div class="feature-content">
-                <div class="product">
-                  <a href="{% url 'category-archive' featured_ad.category.slug %}"><i class="lni-folder"></i>
-                    {{ featured_ad.category }}</a>
-                </div>
+                
                 <h4><a href="{% url 'ads-detail' featured_ad.id %}">{{ featured_ad.title }}</a></h4>
-                <span>Posted at: {{ featured_ad.date_created }}</span>
+                <p class="ad-description">
+                  <span id="short-desc-{{ featured_ad.id }}">{{ featured_ad.description|striptags|truncatechars:40 }}</span>
+                  <span id="full-desc-{{ featured_ad.id }}" style="display: none;">{{ featured_ad.description|striptags }}</span>
+                  {% if featured_ad.description|length > 40 %}
+                  <a href="javascript:void(0);" onclick="toggleDescription('{{ featured_ad.id }}')" class="show-more">Show More</a>
+                  {% endif %}
+                </p>
                 <ul class="address">
                   <li>
-                    <i class="lni-map-marker"></i>{{ featured_ad.city }}, {{ featured_ad.county }}
-                  </li>
-                  <li>
-                    <i class="lni-alarm-clock"></i> {{ featured_ad.date_created|date }}
-                  </li>
-                  <li>
-                   <i class="lni-user"></i> {{ featured_ad.author }}
-                  </li>
-                  <li>
-                    <i class="lni-package"></i> {{ featured_ad.condition }}
+                    <i class="lni-package"></i>{{ featured_ad.condition }}
                   </li>
                 </ul>
-                <div class="listing-bottom">
-                  <h3 class="price float-left">Ksh {{ featured_ad.price }}</h3>
-                  <p href="#" class="btn-verified float-right"><i class="lni-check-box"></i>
-                    Verified Ad</p>
-                </div>
+                <div class="price">Ksh {{ featured_ad.price }}</div>
               </div>
             </div>
           </div>
@@ -145,44 +281,33 @@
           <h1 class="section-title">Latest Classifieds</h1>
           <div class="row">
             {% for recent_ad in recent_ads %}
-            <div class="col-xs-6 col-sm-6 col-md-6 col-lg-4">
+            <div class="col-6 col-sm-4 col-md-3 col-lg-2 mb-4">
               <div class="featured-box">
                 <figure>
                   <a href="{% url 'ads-detail' recent_ad.id %}">
                     {% for img in recent_ad.images.all %}
                     {% if forloop.first %}
-                    <img class="img-fluid" src="{{ img.image.url }}" alt="">
+                    <img src="{{ img.image.url }}" alt="{{ recent_ad.title }}">
                     {% endif %}
                     {% endfor %}
                   </a>
                 </figure>
-
                 <div class="feature-content">
-                  <div class="product">
-                    <a href="{% url 'category-archive' recent_ad.category.slug %}"><i
-                        class="lni-folder"></i>{{ recent_ad.category }}</a>
-                  </div>
-                  <h4><a href="{% url 'ads-detail' recent_ad.id %}">{{ recent_ad.title}}</a></h4>
-                  <span>Posted at: {{ recent_ad.date_created}}</span>
+                  
+                  <h4><a href="{% url 'ads-detail' recent_ad.id %}">{{ recent_ad.title }}</a></h4>
+                  <p class="ad-description">
+                    <span id="short-desc-latest-{{ recent_ad.id }}">{{ recent_ad.description|striptags|truncatechars:40 }}</span>
+                    <span id="full-desc-latest-{{ recent_ad.id }}" style="display: none;">{{ recent_ad.description|striptags }}</span>
+                    {% if recent_ad.description|length > 40 %}
+                    <a href="javascript:void(0);" onclick="toggleDescriptionLatest('{{ recent_ad.id }}')" class="show-more">Show More</a>
+                    {% endif %}
+                  </p>
                   <ul class="address">
-                    <li>
-                      <i class="lni-map-marker"></i>{{ recent_ad.city}}, {{ recent_ad.county}}
-                    </li>
-                    <li>
-                      <i class="lni-alarm-clock"></i>{{ recent_ad.date_created | date}}
-                    </li>
-                    <li>
-                      <i class="lni-user"></i> {{ recent_ad.author }}
-                    </li>
                     <li>
                       <i class="lni-package"></i>{{ recent_ad.condition }}
                     </li>
                   </ul>
-                  <div class="listing-bottom">
-                    <h3 class="price float-left">Ksh {{ recent_ad.price }}</h3>
-                    <p class="btn-verified float-right"><i class="lni-check-box"></i> Verified
-                      Ad</p>
-                  </div>
+                  <div class="price">Ksh {{ recent_ad.price }}</div>
                 </div>
               </div>
             </div>
@@ -202,13 +327,89 @@
     <div class="row">
       <div class="col-md-12">
         <h3 class="section-title">Advertisement</h3>
-        {% for banner in bottom_banner%}
-        <img src="{{ banner.image.url }}" class="top-banner-img img-fluid" alt="">
-        {% endfor %}
+        <div class="carousel-container" style="position: relative;">
+          <div class="carousel-slides">
+            {% for banner in bottom_banner %}
+            <div class="carousel-slide" style="display: none;">
+              <img src="{{ banner.image.url }}" class="top-banner-img img-fluid" alt="">
+            </div>
+            {% endfor %}
+          </div>
+          <button class="carousel-button prev" onclick="moveSlide(-1)">❮</button>
+          <button class="carousel-button next" onclick="moveSlide(1)">❯</button>
+        </div>
       </div>
     </div>
   </div>
 </section>
 <!-- Advertisements Bottom Banner Area End -->
+
+<script>
+  function toggleDescription(adId) {
+    const shortDesc = document.getElementById(`short-desc-${adId}`);
+    const fullDesc = document.getElementById(`full-desc-${adId}`);
+    const showMoreLink = document.querySelector(`#full-desc-${adId} + .show-more`);
+
+    if (fullDesc.style.display === "none") {
+      shortDesc.style.display = "none";
+      fullDesc.style.display = "inline";
+      showMoreLink.textContent = "Show Less";
+    } else {
+      shortDesc.style.display = "inline";
+      fullDesc.style.display = "none";
+      showMoreLink.textContent = "Show More";
+    }
+  }
+
+  function toggleDescriptionLatest(adId) {
+    const shortDesc = document.getElementById(`short-desc-latest-${adId}`);
+    const fullDesc = document.getElementById(`full-desc-latest-${adId}`);
+    const showMoreLink = document.querySelector(`#full-desc-latest-${adId} + .show-more`);
+
+    if (fullDesc.style.display === "none") {
+      shortDesc.style.display = "none";
+      fullDesc.style.display = "inline";
+      showMoreLink.textContent = "Show Less";
+    } else {
+      shortDesc.style.display = "inline";
+      fullDesc.style.display = "none";
+      showMoreLink.textContent = "Show More";
+    }
+  }
+
+  let slideIndex = 1;
+  
+  // Add this to your existing script section
+  function showSlides(n) {
+    const slides = document.getElementsByClassName("carousel-slide");
+    if (slides.length === 0) return;
+    
+    if (n > slides.length) { slideIndex = 1 }
+    if (n < 1) { slideIndex = slides.length }
+    
+    for (let i = 0; i < slides.length; i++) {
+      slides[i].style.display = "none";
+    }
+    
+    slides[slideIndex - 1].style.display = "block";
+  }
+
+  function moveSlide(n) {
+    showSlides(slideIndex += n);
+  }
+
+  // Auto advance slides every 5 seconds
+  function autoAdvance() {
+    moveSlide(1);
+    setTimeout(autoAdvance, 5000);
+  }
+
+  // Initialize the carousel
+  document.addEventListener('DOMContentLoaded', function() {
+    showSlides(slideIndex);
+    setTimeout(autoAdvance, 5000);
+  });
+  
+</script>
 
 {% endblock content %}

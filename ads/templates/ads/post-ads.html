@@ -73,27 +73,7 @@
     </div>
 </div>
 
-<!-- Banners -->
-{% for banner in top_banners %}
-    <div class="top-banner">
-        <img src="{{ banner.image.url }}" alt="{{ banner.title }}">
-        <a href="{{ banner.link }}">{{ banner.title }}</a>
-    </div>
-{% endfor %}
 
-{% for banner in right_banners %}
-    <div class="right-banner">
-        <img src="{{ banner.image.url }}" alt="{{ banner.title }}">
-        <a href="{{ banner.link }}">{{ banner.title }}</a>
-    </div>
-{% endfor %}
-
-{% for banner in bottom_banners %}
-    <div class="bottom-banner">
-        <img src="{{ banner.image.url }}" alt="{{ banner.title }}">
-        <a href="{{ banner.link }}">{{ banner.title }}</a>
-    </div>
-{% endfor %}
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

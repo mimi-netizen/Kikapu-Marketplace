@@ -16,147 +16,114 @@
 </div>
 <!-- Page Header End -->
 
-<!-- Main container Start -->
-<div class="main-container section-padding">
+<!-- Advertisement Top Banner Area Start -->
+<section class="section-padding">
   <div class="container">
     <div class="row">
-      <div class="col-lg-4 col-md-12 col-xs-12 page-sidebar">
-        <aside>
-          <!-- Categories Widget -->
-          <div class="widget categories">
-            <h4 class="widget-title">All Categories</h4>
-            <ul class="categories-list">
-              <li>
-                {% for category in category_listing %}
-                <a href="{% url 'category-archive' category.slug %}">
-                  <i class="lni-folder"></i>
-                  {{ category }} <span class="category-counter">({{ category.total_ads }})</span>
-                </a>
-                {% endfor %}
-              </li>
-            </ul>
-          </div>
-          <!-- Counties Widget -->
-          <div class="widget counties">
-            <h4 class="widget-title">All Counties</h4>
-            <ul class="counties-list">
-              <li>
-                {% for county in county_listing %}
-                <a href="{% url 'county-archive' county.slug %}">
-                  <i class="lni-folder"></i>
-                  {{ county }} <span class="county-counter">({{ county.total_ads }})</span>
-                </a>
-                {% endfor %}
-              </li>
-            </ul>
-          </div>
-          <div class="widget">
-            <h4 class="widget-title">Advertisement</h4>
-            <div class="add-box">
-              <img class="img-fluid" src="{% static 'img/img1.jpg' %}" alt="">
+      <div class="col-md-12">
+        <h3 class="section-title">Advertisement</h3>
+        <div class="carousel-container">
+          <div class="carousel-slides">
+            {% for banner in top_banners %}
+            <div class="carousel-slide" style="display: none;">
+              <img src="{{ banner.image.url }}" class="top-banner-img img-fluid" alt="">
             </div>
+            {% endfor %}
           </div>
-        </aside>
+          <button class="carousel-button prev" onclick="moveSlide(-1)">❮</button>
+          <button class="carousel-button next" onclick="moveSlide(1)">❯</button>
+        </div>
       </div>
-      <div class="col-lg-8 col-md-12 col-xs-12 page-content">
+    </div>
+  </div>
+</section>
+<!-- Advertisements Top Banner Area End -->
+
+<!-- Main container Start -->
+<div class="main-container section-padding">
+  <div class="container-fluid px-4">
+    <!-- Search Bar Start -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <form method="GET" action="" class="search-form">
+          <div class="search-wrapper">
+            <input 
+              type="text" 
+              name="q" 
+              class="search-input" 
+              placeholder="Search products..."
+              value="{{ request.GET.q }}"
+            >
+            <button type="submit" class="search-button">
+              <i class="lni-search"></i>
+              Search
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <!-- Search Bar End -->
+
+    <!-- Search Results Message -->
+    {% if query %}
+      <div class="row mb-4">
+        <div class="col-12">
+          <h3>Search Results for: "{{ query }}"</h3>
+          {% if not ads_listing %}
+            <p>No results found.</p>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="row">
+      <div class="col-12">
         <div class="adds-wrapper">
           <div class="tab-content">
             <div id="list-view" class="tab-pane fade active show">
-              <div class="row">
+              <div class="row g-3">
                 {% for ad_listing in ads_listing %}
-                <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
-                  <div class="featured-box">
-                    <figure>
+                <div class="col-6 col-md-3 col-lg-2">
+                  <div class="product-card">
+                    <div class="image-wrapper">
                       <a href="{% url 'ads-detail' ad_listing.id %}">
                         {% for img in ad_listing.images.all %}
                         {% if forloop.first %}
-                        <img class="img-fluid" src="{{ img.image.url }}" alt="">
+                        <img class="product-image" src="{{ img.image.url }}" alt="">
                         {% endif %}
                         {% endfor %}
                       </a>
-                    </figure>
-                    <div class="feature-content">
-                      <div class="product">
-                        <a href="{% url 'category-archive' ad_listing.category.slug %}"><i class="lni-folder"></i> {{ ad_listing.category }}</a>
-                      </div>
-                      <h4><a href="{% url 'ads-detail' ad_listing.id %}">{{ ad_listing.title }}</a></h4>
-                      <span>Created {{ ad_listing.date_created }}</span>
-                      <ul class="address">
-                        <li>
-                          <i class="lni-map-marker"></i> {{ ad_listing.city }}, {{ ad_listing.county }}
-                        </li>
-                        <li>
-                          <i class="lni-alarm-clock"></i> {{ ad_listing.date_created|date }}
-                        </li>
-                        <li>
-                          <i class="lni-user"></i> {{ ad_listing.author.user }}
-                        </li>
-                        <li>
-                          <i class="lni-package"></i> {{ ad_listing.condition }}
-                        </li>
-                      </ul>
-                      <div class="listing-bottom">
-                        <h3 class="price float-left">Ksh {{ ad_listing.price }}</h3>
-                        <p class="btn-verified float-right"><i class="lni-check-box"></i>
-                          Verified Ad</p>
-                      </div>
-
-                      <!-- Add the Message Seller Button -->
-                      <div class="ads-btn mb-4">
-                        <!-- Email and Phone buttons -->
-                        <a href="tel:{{ ad_listing.phone }}" class="btn btn-common">
-                            <i class="lni-phone-handset"></i>{{ ad_listing.phone }}
-                        </a>
-                        
-                        <!-- New Message Button -->
-                        {% if user.is_authenticated %}
-                            {% if user != ad_listing.author.user %}
-                                <button type="button" class="btn btn-common" data-toggle="modal" data-target="#messageModal{{ ad_listing.id }}">
-                                    <i class="lni-comments"></i> Message Seller
-                                </button>
-                            {% endif %}
-                        {% else %}
-                            <a href="{% url 'login' %}?next={{ request.path }}" class="btn btn-common">
-                                <i class="lni-comments"></i> Login to Message
-                            </a>
-                        {% endif %}
+                    </div>
+                    <div class="product-info">
+                      <h3 class="product-title">
+                        <a href="{% url 'ads-detail' ad_listing.id %}">{{ ad_listing.title }}</a>
+                      </h3>
+                      <div class="product-price">Ksh {{ ad_listing.price }}</div>
+                      <div class="verified-tag">
+                        <i class="lni-check-box"></i> Verified
                       </div>
                     </div>
                   </div>
-
-                  <!-- Modal for messaging - Now inside the loop -->
-                  <div class="modal fade" id="messageModal{{ ad_listing.id }}" tabindex="-1" role="dialog" 
-                       aria-labelledby="messageModalLabel{{ ad_listing.id }}" aria-hidden="true">
-                      <div class="modal-dialog" role="document">
-                          <div class="modal-content">
-                              <div class="modal-header">
-                                  <h5 class="modal-title" id="messageModalLabel{{ ad_listing.id }}">
-                                      Message to {{ ad_listing.author.user.username }}
-                                  </h5>
-                                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                      <span aria-hidden="true">&times;</span>
-                                  </button>
-                              </div>
-                              <form action="{% url 'send-message' ad_listing.id %}" method="POST">
-                                  {% csrf_token %}
-                                  <div class="modal-body">
-                                      <div class="form-group">
-                                          <label for="message{{ ad_listing.id }}">Your Message:</label>
-                                          <textarea class="form-control" id="message{{ ad_listing.id }}" 
-                                                  name="message" rows="4" required 
-                                                  placeholder="Write your message here..."></textarea>
-                                      </div>
-                                  </div>
-                                  <div class="modal-footer">
-                                      <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                                      <button type="submit" class="btn btn-common">Send Message</button>
-                                  </div>
-                              </form>
-                          </div>
-                      </div>
-                  </div>
                 </div>
                 {% endfor %}
+              </div>
+              <!-- Pagination -->
+              <div class="pagination mt-4">
+                <span class="step-links">
+                  {% if ads_listing.has_previous %}
+                    <a href="?page=1{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">&laquo; first</a>
+                    <a href="?page={{ ads_listing.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">previous</a>
+                  {% endif %}
+
+                  <span class="current">
+                    Page {{ ads_listing.number }} of {{ ads_listing.paginator.num_pages }}.
+                  </span>
+
+                  {% if ads_listing.has_next %}
+                    <a href="?page={{ ads_listing.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">next</a>
+                    <a href="?page={{ ads_listing.paginator.num_pages }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">last &raquo;</a>
+                  {% endif %}
+                </span>
               </div>
             </div>
           </div>
@@ -166,5 +133,241 @@
   </div>
 </div>
 <!-- Main container End -->
+
+<style>
+  /* Carousel Styles */
+  .carousel-container {
+    position: relative;
+    max-width: 100%;
+    margin: auto;
+  }
+
+  .carousel-slide {
+    display: none;
+    width: 100%;
+  }
+
+  .carousel-slide img {
+    width: 100%;
+    height: auto;
+  }
+
+  .carousel-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: none;
+    padding: 16px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: background-color 0.3s;
+  }
+
+  .carousel-button:hover {
+    background-color: rgba(0, 0, 0, 0.8);
+  }
+
+  .prev {
+    left: 0;
+    border-radius: 0 3px 3px 0;
+  }
+
+  .next {
+    right: 0;
+    border-radius: 3px 0 0 3px;
+  }
+
+  /* Existing Styles */
+  .container-fluid {
+    max-width: 1920px;
+  }
+
+  .search-wrapper {
+    display: flex;
+    max-width: 800px;
+    margin: 0 auto;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    border-radius: 8px;
+    overflow: hidden;
+    background: white;
+  }
+
+  .search-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 2px solid #e8e8e8;
+    border-right: none;
+    border-radius: 8px 0 0 8px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .search-input:focus {
+    border-color: #89613A;
+  }
+
+  .search-button {
+    padding: 12px 24px;
+    background: #89613A;
+    color: white;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s;
+  }
+
+  .search-button:hover {
+    background: #6d4c2d;
+  }
+
+  .search-button i {
+    font-size: 18px;
+  }
+
+  .product-card {
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 4px;
+    padding: 8px;
+    height: 100%;
+    transition: box-shadow 0.2s;
+  }
+
+  .product-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  .image-wrapper {
+    position: relative;
+    width: 100%;
+    padding-top: 100%;
+    margin-bottom: 8px;
+  }
+
+  .product-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .product-info {
+    text-align: left;
+  }
+
+  .product-title {
+    font-size: 15px;
+    font-weight: bold;
+    line-height: 1.3;
+    margin-bottom: 8px;
+    color: #333;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .product-title a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .product-price {
+    font-size: 14px;
+    color: #89613A;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .verified-tag {
+    font-size: 12px;
+    color: #666;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .row.g-3 {
+    margin-right: -12px;
+    margin-left: -12px;
+  }
+
+  .row.g-3 > [class*="col-"] {
+    padding-right: 12px;
+    padding-left: 12px;
+    margin-bottom: 24px;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 1600px) {
+    .col-lg-2 {
+      flex: 0 0 auto;
+      width: 20%;
+    }
+  }
+
+  @media (max-width: 1200px) {
+    .col-lg-2 {
+      flex: 0 0 auto;
+      width: 25%;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .col-md-3 {
+      flex: 0 0 auto;
+      width: 33.333333%;
+    }
+  }
+
+  @media (max-width: 576px) {
+    .col-6 {
+      flex: 0 0 auto;
+      width: 50%;
+    }
+  }
+</style>
+
+<script>
+  let slideIndex = 1;
+  
+  function showSlides(n) {
+    const slides = document.getElementsByClassName("carousel-slide");
+    if (slides.length === 0) return;
+    
+    if (n > slides.length) { slideIndex = 1 }
+    if (n < 1) { slideIndex = slides.length }
+    
+    for (let i = 0; i < slides.length; i++) {
+      slides[i].style.display = "none";
+    }
+    
+    slides[slideIndex - 1].style.display = "block";
+  }
+
+  function moveSlide(n) {
+    showSlides(slideIndex += n);
+  }
+
+  // Auto advance slides every 5 seconds
+  function autoAdvance() {
+    moveSlide(1);
+    setTimeout(autoAdvance, 5000);
+  }
+
+  // Initialize the carousel
+  document.addEventListener('DOMContentLoaded', function() {
+    showSlides(slideIndex);
+    setTimeout(autoAdvance, 5000);
+  });
+</script>
 
 {% endblock content %}
